@@ -1,0 +1,14 @@
+---
+const id = `toast-${Date.now()}`;
+const message = Astro.props.message || '';
+const type = Astro.props.type || 'success';
+const duration = Astro.props.duration || 3000;
+---
+
+<div id={id} class={`fixed top-4 right-4 z-50 px-4 py-2 rounded shadow text-white ${type === 'success' ? 'bg-green-600' : 'bg-red-600'}`}>
+  {message}
+</div>
+
+<script define:vars={{ id, duration }}>
+  setTimeout(() => document.getElementById(id)?.remove(), duration);
+</script>

@@ -1,17 +1,174 @@
 ---
-
+import Layout from '../layouts/Layout.astro';
 ---
 
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<link rel="icon" href="/favicon.ico" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Astro</title>
-	</head>
-	<body>
-		<h1>Astro</h1>
-	</body>
-</html>
+<Layout>
+  <div x-data="customerApp()" x-init="init()" class="bg-gray-50 min-h-screen pb-24">
+    <!-- Header -->
+    <div class="bg-white shadow sticky top-0 z-10 p-3 flex justify-between items-center">
+      <h1 class="text-xl font-bold" x-text="settings.businessName || 'My Kiosk'"></h1>
+      <div class="flex gap-2">
+        <a :href="'https://wa.me/' + settings.whatsappNumber" target="_blank" class="bg-green-500 text-white px-3 py-1 rounded-full text-sm">WhatsApp</a>
+        <a :href="'tel:' + settings.phoneNumber" class="bg-blue-500 text-white px-3 py-1 rounded-full text-sm">Call</a>
+      </div>
+    </div>
+
+    <!-- Categories filter -->
+    <div class="max-w-3xl mx-auto px-4 pt-4" x-show="categories.length > 0">
+      <div class="flex overflow-x-auto gap-2 pb-2">
+        <button @click="selectedCategory = null" :class="selectedCategory === null ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'" class="px-4 py-1 rounded-full whitespace-nowrap text-sm">All</button>
+        <template x-for="cat in categories" :key="cat.id">
+          <button @click="selectedCategory = cat.id" :class="selectedCategory === cat.id ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'" class="px-4 py-1 rounded-full whitespace-nowrap text-sm" x-text="cat.name"></button>
+        </template>
+      </div>
+    </div>
+
+    <!-- Products Grid -->
+    <div class="max-w-3xl mx-auto px-4 py-4">
+      <!-- Show loading or no products -->
+      <div x-show="loading && products.length === 0" class="text-center py-10">Loading...</div>
+      <div x-show="!loading && products.length === 0" class="text-center py-10 text-gray-500">No products found.</div>
+      
+      <!-- Product cards -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <template x-for="product in filteredProducts" :key="product.id">
+          <div class="bg-white rounded-xl shadow p-3">
+            <div class="relative">
+              <img x-show="product.imageUrl" :src="product.imageUrl" class="w-full h-32 object-cover rounded" />
+              <div x-show="!product.imageUrl" class="w-full h-32 bg-gray-100 flex items-center justify-center text-gray-400 rounded">📦</div>
+              <div x-show="product.onPromotion && product.promoPrice < product.price" class="absolute top-1 left-1 bg-red-500 text-white text-xs px-1 rounded">SALE</div>
+            </div>
+            <h2 class="font-bold text-lg mt-2" x-text="product.name"></h2>
+            <div>
+              <span x-show="!product.onPromotion" class="text-green-700 font-semibold" x-text="'Tsh ' + product.price"></span>
+              <template x-if="product.onPromotion && product.promoPrice < product.price">
+                <div>
+                  <span class="line-through text-gray-400 text-sm" x-text="'Tsh ' + product.price"></span>
+                  <span class="text-red-600 font-bold" x-text="'Tsh ' + product.promoPrice"></span>
+                </div>
+              </template>
+            </div>
+            <div class="text-sm mt-1" x-text="product.stock > 0 ? 'In stock: ' + product.stock + ' ' + product.unit : 'Out of stock'"></div>
+            <button @click="quickSell(product)" :disabled="product.stock <= 0" class="mt-2 bg-green-600 text-white px-3 py-1 rounded-full text-sm w-full" :class="product.stock <= 0 ? 'opacity-50 cursor-not-allowed' : ''">Buy</button>
+          </div>
+        </template>
+      </div>
+    </div>
+
+    <!-- Sticky bottom bar -->
+    <div class="fixed bottom-0 left-0 right-0 bg-white border-t p-2 text-center text-sm text-gray-600" x-text="settings.openingHours || 'Open today'"></div>
+  </div>
+
+  <script lang="js">
+    function customerApp() {
+      return {
+        products: [],
+        categories: [],
+        settings: {},
+        selectedCategory: null,
+        loading: true,
+        toastTimeout: null,
+        async init() {
+          try {
+            const res = await fetch('/api/customer-data');
+            const data = await res.json();
+            this.products = data.products || [];
+            this.categories = data.categories || [];
+            this.settings = data.settings || {};
+          } catch (err) {
+            console.error('Failed to load data:', err);
+          } finally {
+            this.loading = false;
+          }
+
+          // Listen to global SSE events (dispatched from Layout.astro)
+          window.addEventListener('sse:stock-update', (event) => {
+            const update = event.detail;
+            const idx = this.products.findIndex(p => p.id === update.productId);
+            if (idx !== -1) {
+              this.products[idx].stock = update.stock;
+            }
+          });
+
+		window.addEventListener('sse:product-updated', (event) => {
+			const update = event.detail;
+			const idx = this.products.findIndex(p => p.id === update.productId);
+			if (idx !== -1) {
+			// Update existing product
+				this.products[idx] = { ...this.products[idx], ...update };
+			} else {
+				// Product not in list – add it if it's active
+				if (update.active) {
+				this.products.push(update);
+				}
+			}
+		});
+          window.addEventListener('sse:product-created', (event) => {
+            const newProduct = event.detail.product;
+            this.products.push(newProduct);
+          });
+
+          window.addEventListener('sse:product-deleted', (event) => {
+            const productId = event.detail.productId;
+            this.products = this.products.filter(p => p.id !== productId);
+          });
+			window.addEventListener('sse:category-created', () => {
+				location.reload(); // or dynamically add to dropdown
+			});
+			window.addEventListener('sse:category-deleted', () => {
+				location.reload();
+			});
+        },
+		get filteredProducts() {
+			let activeProducts = this.products.filter(p => p.active !== false);
+			if (!this.selectedCategory) return activeProducts;
+			return activeProducts.filter(p => p.categoryId === this.selectedCategory);
+		},
+        showToast(message, type = 'success') {
+          let toast = document.getElementById('customerToast');
+          if (!toast) {
+            const div = document.createElement('div');
+            div.id = 'customerToast';
+            div.className = 'fixed bottom-20 left-4 right-4 z-50 transition-all duration-300 transform translate-y-full';
+            document.body.appendChild(div);
+            toast = div;
+          }
+          const bg = type === 'success' ? 'bg-green-600' : 'bg-red-600';
+          toast.innerHTML = `<div class="${bg} text-white px-4 py-2 rounded-lg shadow-lg text-center">${message}</div>`;
+          toast.classList.remove('translate-y-full');
+          toast.classList.add('translate-y-0');
+          if (this.toastTimeout) clearTimeout(this.toastTimeout);
+          this.toastTimeout = setTimeout(() => {
+            toast.classList.remove('translate-y-0');
+            toast.classList.add('translate-y-full');
+          }, 3000);
+        },
+        quickSell(product) {
+          if (product.stock <= 0) {
+            this.showToast('Out of stock', 'error');
+            return;
+          }
+          const qty = prompt(`How many ${product.name}?`, '1');
+          if (!qty) return;
+          const quantity = parseInt(qty);
+          if (isNaN(quantity) || quantity <= 0) {
+            this.showToast('Invalid quantity', 'error');
+            return;
+          }
+          fetch('/api/quick-sell', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({ productId: product.id, quantity, usePromo: '1' })
+          }).then(async res => {
+            if (res.ok) {
+              this.showToast(`Bought ${quantity} ${product.name}`);
+            } else {
+              const msg = await res.text();
+              this.showToast(msg, 'error');
+            }
+          }).catch(() => this.showToast('Network error', 'error'));
+        }
+      };
+    }
+  </script>
+</Layout>

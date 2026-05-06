@@ -1,0 +1,243 @@
+---
+export const prerender = false;
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { rawDb } from '../../db';
+
+// Fetch all stock movements with product names
+const movements = rawDb.prepare(`
+  SELECT sm.*, p.name as product_name 
+  FROM stock_movements sm
+  JOIN products p ON sm.product_id = p.id
+  ORDER BY sm.created_at DESC
+  LIMIT 200
+`).all() as any[];
+
+// Fetch products for dropdown
+const products = rawDb.prepare('SELECT id, name FROM products WHERE active = 1 ORDER BY name').all() as { id: number; name: string }[];
+// Fetch suppliers for dropdown
+const suppliers = rawDb.prepare('SELECT id, name FROM suppliers ORDER BY name').all() as { id: number; name: string }[];
+// Fetch categories for product modal dropdown
+const categories = rawDb.prepare('SELECT id, name FROM categories ORDER BY name').all() as { id: number; name: string }[];
+---
+
+<AdminLayout>
+  <div class="max-w-6xl mx-auto">
+    <div class="flex justify-between items-center mb-4">
+      <h1 class="text-2xl font-bold">Transactions (Stock Movements)</h1>
+      <button id="refreshBtn" class="bg-blue-600 text-white px-4 py-2 rounded text-sm">Refresh</button>
+    </div>
+
+    <!-- Form to add stock in / adjustment -->
+    <div class="bg-white p-4 rounded shadow mb-6">
+      <h2 class="text-xl font-semibold mb-3">Add Movement</h2>
+      <form method="post" action="/api/add-movement" id="movementForm">
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
+          <div class="relative">
+            <select name="productId" id="productSelect" required class="border p-2 rounded w-full">
+              <option value="">Select product</option>
+              {products.map(p => <option value={p.id}>{p.name}</option>)}
+            </select>
+            <button type="button" id="quickAddProductBtn" class="absolute right-1 top-1 bg-blue-600 text-white text-xs px-2 py-1 rounded">+ New</button>
+          </div>
+          <select name="type" required class="border p-2 rounded">
+            <option value="in">Purchase (Stock In)</option>
+            <option value="adjustment">Adjustment</option>
+          </select>
+          <input type="number" step="0.01" name="quantity" placeholder="Quantity (+ for add, - for remove)" required class="border p-2 rounded" />
+          <input type="number" step="0.01" name="totalCost" placeholder="Total cost (for purchase)" class="border p-2 rounded" />
+          <div class="relative">
+            <select name="supplierId" id="supplierSelect" class="border p-2 rounded w-full">
+              <option value="">Supplier (optional)</option>
+              {suppliers.map(s => <option value={s.id}>{s.name}</option>)}
+            </select>
+            <button type="button" id="quickAddSupplierBtn" class="absolute right-1 top-1 bg-blue-600 text-white text-xs px-2 py-1 rounded">+ New</button>
+          </div>
+        </div>
+        <div class="mt-3">
+          <input type="text" name="reason" placeholder="Reason (e.g., purchase, spoilage)" class="border p-2 rounded w-full" />
+        </div>
+        <button type="submit" class="mt-3 bg-blue-600 text-white px-4 py-2 rounded">Record Movement</button>
+      </form>
+    </div>
+
+    <!-- Movements table -->
+    <div class="bg-white rounded shadow overflow-x-auto">
+      <table class="w-full min-w-[700px]">
+        <thead class="bg-gray-100">
+          <tr>
+            <th class="p-2">Date</th>
+            <th class="p-2">Product</th>
+            <th class="p-2">Type</th>
+            <th class="p-2">Quantity</th>
+            <th class="p-2">Total (Tsh)</th>
+            <th class="p-2">Reason</th>
+            <th class="p-2">User</th>
+          </tr>
+        </thead>
+        <tbody>
+          {movements.map((m, idx) => (
+            <tr class="border-t">
+              <td class="p-2">{new Date(m.created_at).toLocaleString()}</td>
+              <td class="p-2">{m.product_name}</td>
+              <td class="p-2">{m.type}</td>
+              <td class="p-2">{m.quantity}</td>
+              <td class="p-2">{m.total_price || m.total_cost || '-'}</td>
+              <td class="p-2">{m.reason || '-'}</td>
+              <td class="p-2">{m.user_id}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Modal for Quick Add Product -->
+  <div id="productModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
+      <h3 class="text-lg font-semibold mb-4">Add New Product</h3>
+      <form id="quickProductForm">
+        <div class="mb-3">
+          <label class="block text-sm font-medium">Product Name *</label>
+          <input type="text" id="prodName" required class="border p-2 rounded w-full">
+        </div>
+        <div class="mb-3">
+          <label class="block text-sm font-medium">Selling Price *</label>
+          <input type="number" step="0.01" id="prodPrice" required class="border p-2 rounded w-full">
+        </div>
+        <div class="mb-3">
+          <label class="block text-sm font-medium">Unit</label>
+          <select id="prodUnit" class="border p-2 rounded w-full">
+            <option value="piece">piece</option>
+            <option value="kg">kg</option>
+            <option value="g">g</option>
+            <option value="L">L</option>
+            <option value="ml">ml</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label class="block text-sm font-medium">Category (optional)</label>
+          <input type="text" id="prodCategory" list="categoryOptions" class="border p-2 rounded w-full">
+          <datalist id="categoryOptions">
+            {categories.map(c => <option value={c.name}></option>)}
+          </datalist>
+        </div>
+        <div class="flex justify-end gap-2">
+          <button type="button" id="closeProductModal" class="bg-gray-300 px-4 py-2 rounded">Cancel</button>
+          <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded">Create Product</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal for Quick Add Supplier -->
+  <div id="supplierModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
+      <h3 class="text-lg font-semibold mb-4">Add New Supplier</h3>
+      <form id="quickSupplierForm">
+        <div class="mb-3">
+          <label class="block text-sm font-medium">Supplier Name *</label>
+          <input type="text" id="supName" required class="border p-2 rounded w-full">
+        </div>
+        <div class="mb-3">
+          <label class="block text-sm font-medium">Phone (optional)</label>
+          <input type="text" id="supPhone" class="border p-2 rounded w-full">
+        </div>
+        <div class="flex justify-end gap-2">
+          <button type="button" id="closeSupplierModal" class="bg-gray-300 px-4 py-2 rounded">Cancel</button>
+          <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded">Create Supplier</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script lang="js">
+    document.addEventListener('DOMContentLoaded', () => {
+      const productModal = document.getElementById('productModal');
+      const supplierModal = document.getElementById('supplierModal');
+      const quickProductBtn = document.getElementById('quickAddProductBtn');
+      const quickSupplierBtn = document.getElementById('quickAddSupplierBtn');
+      const closeProductModal = document.getElementById('closeProductModal');
+      const closeSupplierModal = document.getElementById('closeSupplierModal');
+      const productForm = document.getElementById('quickProductForm');
+      const supplierForm = document.getElementById('quickSupplierForm');
+      const productSelect = document.getElementById('productSelect');
+      const supplierSelect = document.getElementById('supplierSelect');
+      const refreshBtn = document.getElementById('refreshBtn');
+
+      function showModal(modal) { if (modal) { modal.classList.remove('hidden'); modal.classList.add('flex'); } }
+      function hideModal(modal) { if (modal) { modal.classList.remove('flex'); modal.classList.add('hidden'); } }
+
+      if (quickProductBtn) quickProductBtn.addEventListener('click', () => showModal(productModal));
+      if (closeProductModal) closeProductModal.addEventListener('click', () => hideModal(productModal));
+      if (quickSupplierBtn) quickSupplierBtn.addEventListener('click', () => showModal(supplierModal));
+      if (closeSupplierModal) closeSupplierModal.addEventListener('click', () => hideModal(supplierModal));
+
+      if (productForm) {
+        productForm.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const name = document.getElementById('prodName').value;
+          const price = document.getElementById('prodPrice').value;
+          const unit = document.getElementById('prodUnit').value;
+          const category = document.getElementById('prodCategory').value;
+          const fd = new FormData();
+          fd.append('name', name);
+          fd.append('price', price);
+          fd.append('unit', unit);
+          if (category) fd.append('category', category);
+          const res = await fetch('/api/quick-add-product', { method: 'POST', body: fd });
+          if (res.ok) {
+            const newProduct = await res.json();
+            const opt = document.createElement('option');
+            opt.value = newProduct.id;
+            opt.textContent = newProduct.name;
+            if (productSelect) productSelect.appendChild(opt);
+            if (productSelect) productSelect.value = newProduct.id;
+            hideModal(productModal);
+            productForm.reset();
+            if (window.showToast) window.showToast('Product created!');
+            else alert('Product created!');
+          } else {
+            const err = await res.text();
+            if (window.showToast) window.showToast(err, 'error');
+            else alert(err);
+          }
+        });
+      }
+
+      if (supplierForm) {
+        supplierForm.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const name = document.getElementById('supName').value;
+          const phone = document.getElementById('supPhone').value;
+          const fd = new FormData();
+          fd.append('name', name);
+          if (phone) fd.append('phone', phone);
+          const res = await fetch('/api/quick-add-supplier', { method: 'POST', body: fd });
+          if (res.ok) {
+            const newSupplier = await res.json();
+            const opt = document.createElement('option');
+            opt.value = newSupplier.id;
+            opt.textContent = newSupplier.name;
+            if (supplierSelect) supplierSelect.appendChild(opt);
+            if (supplierSelect) supplierSelect.value = newSupplier.id;
+            hideModal(supplierModal);
+            supplierForm.reset();
+            if (window.showToast) window.showToast('Supplier created!');
+            else alert('Supplier created!');
+          } else {
+            const err = await res.text();
+            if (window.showToast) window.showToast(err, 'error');
+            else alert(err);
+          }
+        });
+      }
+
+      window.addEventListener('click', (e) => {
+        if (e.target === productModal) hideModal(productModal);
+        if (e.target === supplierModal) hideModal(supplierModal);
+      });
+
+      if (refreshBtn) refreshBtn.addEventListener('click', () => window.location.reload());
+    });
+  </script>
+</AdminLayout>

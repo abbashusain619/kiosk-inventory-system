@@ -12,6 +12,18 @@
     "astro": "astro"
   },
   "dependencies": {
-    "astro": "^6.2.2"
+    "@tailwindcss/vite": "^4.2.4",
+    "astro": "^6.2.2",
+    "bcryptjs": "^3.0.3",
+    "better-sqlite3": "^12.9.0",
+    "cookie": "^1.1.1",
+    "drizzle-orm": "^0.45.2",
+    "tailwindcss": "^4.2.4",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/better-sqlite3": "^7.6.13",
+    "drizzle-kit": "^0.31.10"
   }
 }

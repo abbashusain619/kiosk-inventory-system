@@ -1,0 +1,259 @@
+---
+const success = Astro.url.searchParams.has('success');
+export const prerender = false;
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { rawDb } from '../../../db';
+
+// Fetch all active products for dropdown
+const products = rawDb.prepare('SELECT id, name, price, stock, unit FROM products WHERE active = 1 ORDER BY name').all() as { id: number; name: string; price: number; stock: number; unit: string }[];
+---
+
+<AdminLayout>
+  <div class="max-w-4xl mx-auto">
+    <h1 class="text-2xl font-bold mb-4">New Sale (Multi-Product)</h1>
+    
+    {success && (
+      <div id="toast" class="fixed top-4 right-4 bg-green-600 text-white px-4 py-2 rounded shadow z-50">
+        Sale completed successfully!
+      </div>
+    )}
+
+    <!-- Product selector -->
+    <div class="bg-white p-4 rounded shadow mb-4">
+      <div class="flex gap-2 items-end">
+        <div class="flex-1">
+          <label class="block font-semibold mb-1">Product</label>
+          <select id="productSelect" class="w-full border p-2 rounded">
+            <option value="">Select product</option>
+            {products.map(p => (
+              <option value={p.id} data-price={p.price} data-stock={p.stock}>
+                {p.name} - Tsh {p.price} (stock: {p.stock} {p.unit || 'piece'})
+              </option>
+            ))}
+          </select>
+        </div>
+        <div class="w-24">
+          <label class="block font-semibold mb-1">Qty</label>
+          <input type="number" id="quantity" value="1" min="1" class="border p-2 rounded w-full" />
+        </div>
+        <button id="addBtn" class="bg-blue-600 text-white px-4 py-2 rounded">Add</button>
+      </div>
+    </div>
+
+    <!-- Basket table -->
+    <div class="bg-white rounded shadow overflow-x-auto">
+      <table class="w-full">
+        <thead class="bg-gray-100">
+          <tr><th class="p-2 text-left">Product</th><th class="p-2 text-left">Qty</th><th class="p-2 text-left">Unit Price</th><th class="p-2 text-left">Total</th><th class="p-2"></th></tr>
+        </thead>
+        <tbody id="basketBody"></tbody>
+        <tfoot>
+          <tr class="border-t font-bold">
+            <td colspan="3" class="p-2 text-right">Subtotal:</td>
+            <td class="p-2" id="subtotal">0</td>
+            <td></td>
+          </tr>
+          <tr>
+            <td colspan="3" class="p-2 text-right">Discount:</td>
+            <td class="p-2">
+              <select id="discountType" class="border p-1 text-sm">
+                <option value="percentage">%</option>
+                <option value="fixed">Tsh</option>
+              </select>
+              <input type="number" id="discountValue" value="0" min="0" class="border p-1 w-24 text-sm" />
+            </td>
+            <td></td>
+          </tr>
+          <tr class="border-t font-bold text-lg">
+            <td colspan="3" class="p-2 text-right">Final Total:</td>
+            <td class="p-2" id="finalTotal">0</td>
+            <td></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+
+    <div class="mt-4 flex gap-2">
+      <button id="completeSaleBtn" class="bg-green-600 text-white px-6 py-2 rounded">Complete Sale</button>
+      <a href="/admin/products" class="bg-gray-600 text-white px-4 py-2 rounded">Cancel</a>
+    </div>
+  </div>
+
+  <script define:vars={{ products }}>
+    let basket = [];
+    const productsData = products;
+
+    const productSelect = document.getElementById('productSelect');
+    const quantityInput = document.getElementById('quantity');
+    const addBtn = document.getElementById('addBtn');
+    const basketBody = document.getElementById('basketBody');
+    const subtotalSpan = document.getElementById('subtotal');
+    const discountType = document.getElementById('discountType');
+    const discountValue = document.getElementById('discountValue');
+    const finalTotalSpan = document.getElementById('finalTotal');
+    const completeBtn = document.getElementById('completeSaleBtn');
+
+    // Auto-hide success toast after 3 seconds
+    const toast = document.getElementById('toast');
+    if (toast) {
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 500);
+      }, 3000);
+    }
+
+    function updateTotals() {
+      const subtotal = basket.reduce((sum, item) => sum + item.total, 0);
+      if (subtotalSpan) subtotalSpan.innerText = subtotal.toFixed(0);
+      let discount = 0;
+      const discVal = discountValue ? (parseFloat(discountValue.value) || 0) : 0;
+      if (discountType && discountType.value === 'percentage') {
+        discount = subtotal * (discVal / 100);
+      } else {
+        discount = discVal;
+      }
+      const final = Math.max(0, subtotal - discount);
+      if (finalTotalSpan) finalTotalSpan.innerText = final.toFixed(0);
+    }
+
+    function renderBasket() {
+      if (!basketBody) return;
+      basketBody.innerHTML = '';
+      basket.forEach((item, idx) => {
+        const row = document.createElement('tr');
+        row.className = 'border-t';
+        row.innerHTML = `
+          <td class="p-2">${escapeHtml(item.name)}</td>
+          <td class="p-2">
+            <input type="number" class="qty-change w-16 border p-1 text-sm" data-idx="${idx}" value="${item.qty}" min="1" step="1" />
+          </td>
+          <td class="p-2">${item.unitPrice}</td>
+          <td class="p-2">${(item.qty * item.unitPrice).toFixed(0)}</td>
+          <td class="p-2"><button class="remove-item text-red-600" data-idx="${idx}">X</button></td>
+        `;
+        basketBody.appendChild(row);
+      });
+      attachBasketEvents();
+      updateTotals();
+    }
+
+    function attachBasketEvents() {
+      document.querySelectorAll('.qty-change').forEach(input => {
+        input.removeEventListener('change', handleQtyChange);
+        input.addEventListener('change', handleQtyChange);
+      });
+      document.querySelectorAll('.remove-item').forEach(btn => {
+        btn.removeEventListener('click', handleRemove);
+        btn.addEventListener('click', handleRemove);
+      });
+    }
+
+    function handleQtyChange(e) {
+      const target = e.target;
+      const idx = parseInt(target.dataset.idx);
+      const newQty = parseInt(target.value);
+      if (!isNaN(newQty) && newQty > 0 && basket[idx]) {
+        const product = productsData.find(p => p.id === basket[idx].productId);
+        if (product && newQty > product.stock) {
+          window.showToast(`Only ${product.stock} in stock`, 'error');
+          target.value = basket[idx].qty;
+          return;
+        }
+        basket[idx].qty = newQty;
+        basket[idx].total = newQty * basket[idx].unitPrice;
+        renderBasket();
+      }
+    }
+
+    function handleRemove(e) {
+      const idx = parseInt(e.target.dataset.idx);
+      basket.splice(idx, 1);
+      renderBasket();
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/[&<>]/g, function(m) {
+        if (m === '&') return '&amp;';
+        if (m === '<') return '&lt;';
+        if (m === '>') return '&gt;';
+        return m;
+      });
+    }
+
+    if (addBtn && productSelect && quantityInput) {
+      addBtn.addEventListener('click', () => {
+        const productId = parseInt(productSelect.value);
+        if (!productId) return;
+        const product = productsData.find(p => p.id === productId);
+        if (!product) return;
+        let qty = quantityInput ? parseInt(quantityInput.value) : 1;
+        if (isNaN(qty) || qty < 1) qty = 1;
+        if (qty > product.stock) {
+          window.showToast(`Only ${product.stock} in stock`, 'error');
+          return;
+        }
+        const existing = basket.find(item => item.productId === productId);
+        if (existing) {
+          const newQty = existing.qty + qty;
+          if (newQty > product.stock) {
+            window.showToast(`Cannot add. Stock would exceed ${product.stock}`, 'error');
+            return;
+          }
+          existing.qty = newQty;
+          existing.total = newQty * existing.unitPrice;
+        } else {
+          basket.push({
+            productId: product.id,
+            name: product.name,
+            qty: qty,
+            unitPrice: product.price,
+            total: qty * product.price,
+          });
+        }
+        renderBasket();
+        productSelect.value = '';
+        if (quantityInput) quantityInput.value = '1';
+      });
+    }
+
+    if (discountType && discountValue) {
+      discountType.addEventListener('change', updateTotals);
+      discountValue.addEventListener('input', updateTotals);
+    }
+
+    if (completeBtn) {
+      completeBtn.addEventListener('click', async () => {
+        if (basket.length === 0) {
+          window.showToast('Add at least one product', 'error');
+          return;
+        }
+        const subtotal = basket.reduce((sum, item) => sum + item.total, 0);
+        let discount = 0;
+        const discVal = discountValue ? (parseFloat(discountValue.value) || 0) : 0;
+        if (discountType && discountType.value === 'percentage') {
+          discount = subtotal * (discVal / 100);
+        } else {
+          discount = discVal;
+        }
+        const finalTotal = subtotal - discount;
+        const payload = {
+          items: basket.map(item => ({ productId: item.productId, quantity: item.qty, unitPrice: item.unitPrice })),
+          discountType: discountType?.value || 'fixed',
+          discountValue: discVal,
+          finalAmount: finalTotal,
+        };
+        const response = await fetch('/api/complete-sale', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        if (response.ok) {
+          window.location.href = '/admin/sales/new?success=1';
+        } else {
+          const err = await response.text();
+          window.showToast(err, 'error');
+        }
+      });
+    }
+  </script>
+</AdminLayout>

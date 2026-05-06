@@ -1,0 +1,68 @@
+---
+export const prerender = false;
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import ConfirmModal from '../../components/ConfirmModal.astro';
+import Toast from '../../components/Toast.astro';
+import { rawDb } from '../../db';
+
+const added = Astro.url.searchParams.has('added');
+const deleted = Astro.url.searchParams.has('deleted');
+const error = Astro.url.searchParams.get('error');
+
+const categories = rawDb.prepare('SELECT id, name FROM categories ORDER BY name').all() as { id: number; name: string }[];
+---
+
+<AdminLayout>
+  <div class="max-w-2xl mx-auto">
+    <h1 class="text-2xl font-bold mb-4">Manage Categories</h1>
+
+    <!-- Toasts -->
+    {added && <Toast id="addToast" message="Category added successfully!" type="success" />}
+    {deleted && <Toast id="deleteToast" message="Category deleted successfully!" type="success" />}
+    {error === 'used' && <Toast id="errorToast" message="Cannot delete: category is used by products" type="error" duration={4000} />}
+
+    <!-- Add Category Form -->
+    <form method="post" action="/api/add-category" class="flex gap-2 mb-6">
+      <input type="text" name="name" placeholder="New category name" required class="border p-2 rounded flex-1" />
+      <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded">Add</button>
+    </form>
+
+    <!-- Categories List with Delete Button (uses modal) -->
+    <ul class="bg-white rounded shadow divide-y">
+      {categories.map((cat) => (
+        <li class="p-3 flex justify-between items-center" data-category-name={cat.name}>
+          <span>{cat.name}</span>
+          <button type="button" class="delete-category-btn text-red-600" data-id={cat.id} data-name={cat.name}>Delete</button>
+        </li>
+      ))}
+    </ul>
+  </div>
+
+  <ConfirmModal />
+
+  <script lang="js">
+    // Handle delete with modal
+    document.querySelectorAll('.delete-category-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const id = btn.getAttribute('data-id');
+        const name = btn.getAttribute('data-name');
+        const confirmed = await window.showConfirmModal({
+          title: 'Delete Category',
+          message: `Delete category "${name}"? Products using it will lose category assignment.`,
+        });
+        if (confirmed) {
+          const form = document.createElement('form');
+          form.method = 'POST';
+          form.action = '/api/delete-category';
+          const input = document.createElement('input');
+          input.type = 'hidden';
+          input.name = 'id';
+          input.value = id;
+          form.appendChild(input);
+          document.body.appendChild(form);
+          form.submit();
+        }
+      });
+    });
+  </script>
+</AdminLayout>
