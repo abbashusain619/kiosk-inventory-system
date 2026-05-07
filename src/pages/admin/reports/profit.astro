@@ -1,0 +1,92 @@
+---
+export const prerender = false;
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+---
+
+<AdminLayout>
+  <div class="p-4 max-w-6xl mx-auto">
+    <h1 class="text-2xl font-bold mb-4">Profit Margin Analysis</h1>
+    <div class="mb-4 flex gap-2">
+      <input type="date" id="fromDate" class="border p-2 rounded" />
+      <input type="date" id="toDate" class="border p-2 rounded" />
+      <button id="filterBtn" class="bg-blue-600 text-white px-4 py-2 rounded">Filter</button>
+      <button id="exportBtn" class="bg-green-600 text-white px-4 py-2 rounded">Export CSV</button>
+    </div>
+
+    <div id="summary" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div class="bg-white p-4 rounded shadow">Total Revenue: <span id="totalRevenue">0</span> Tsh</div>
+      <div class="bg-white p-4 rounded shadow">Total Cost: <span id="totalCost">0</span> Tsh</div>
+      <div class="bg-white p-4 rounded shadow">Total Profit: <span id="totalProfit">0</span> Tsh</div>
+    </div>
+
+    <div class="bg-white rounded shadow overflow-x-auto">
+      <table class="w-full min-w-[600px]">
+        <thead class="bg-gray-100">
+          <tr><th class="p-2">Product</th><th class="p-2">Qty Sold</th><th class="p-2">Revenue</th><th class="p-2">Cost</th><th class="p-2">Profit</th></tr>
+        </thead>
+        <tbody id="profitTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script lang="js">
+    let currentData = null;
+    async function fetchProfit(from, to) {
+      const params = new URLSearchParams();
+      if (from) params.append('from', from);
+      if (to) params.append('to', to);
+      const res = await fetch(`/api/profit-report?${params.toString()}`);
+      const data = await res.json();
+      currentData = data;
+      document.getElementById('totalRevenue').innerText = data.summary.totalRevenue.toFixed(0);
+      document.getElementById('totalCost').innerText = data.summary.totalCost.toFixed(0);
+      document.getElementById('totalProfit').innerText = data.summary.totalProfit.toFixed(0);
+      const tbody = document.getElementById('profitTableBody');
+      tbody.innerHTML = data.rows.map(r => `
+        <tr class="border-t">
+          <td class="p-2">${escapeHtml(r.name)}</td>
+          <td class="p-2">${r.quantity_sold}</td>
+          <td class="p-2">${r.total_revenue.toFixed(0)}</td>
+          <td class="p-2">${(r.total_cost || 0).toFixed(0)}</td>
+          <td class="p-2">${(r.profit || 0).toFixed(0)}</td>
+        </tr>
+      `).join('');
+    }
+
+    function escapeHtml(str) { return str.replace(/[&<>]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[m])); }
+
+    const fromInput = document.getElementById('fromDate');
+    const toInput = document.getElementById('toDate');
+    const filterBtn = document.getElementById('filterBtn');
+    const exportBtn = document.getElementById('exportBtn');
+
+    // Set default to last 30 days
+    const today = new Date();
+    const monthAgo = new Date(); monthAgo.setDate(today.getDate() - 30);
+    fromInput.value = monthAgo.toISOString().slice(0,10);
+    toInput.value = today.toISOString().slice(0,10);
+    fetchProfit(fromInput.value, toInput.value);
+
+    filterBtn.addEventListener('click', () => {
+      fetchProfit(fromInput.value, toInput.value);
+    });
+
+    exportBtn.addEventListener('click', () => {
+      if (!currentData) return;
+      const rows = currentData.rows;
+      const csv = [
+        ['Product', 'Qty Sold', 'Revenue (Tsh)', 'Cost (Tsh)', 'Profit (Tsh)'],
+        ...rows.map(r => [r.name, r.quantity_sold, r.total_revenue, r.total_cost || 0, r.profit || 0]),
+        [],
+        ['Summary', '', `Total Revenue: ${currentData.summary.totalRevenue}`, `Total Cost: ${currentData.summary.totalCost}`, `Total Profit: ${currentData.summary.totalProfit}`]
+      ].map(row => row.join(',')).join('\n');
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `profit-${new Date().toISOString().slice(0,10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+  </script>
+</AdminLayout>

@@ -1,0 +1,139 @@
+---
+export const prerender = false;
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+---
+
+<AdminLayout>
+  <div class="p-4 max-w-6xl mx-auto">
+    <h1 class="text-2xl font-bold mb-4">Sales History</h1>
+    <div class="mb-4 flex gap-2">
+      <input type="date" id="fromDate" class="border p-2 rounded" />
+      <input type="date" id="toDate" class="border p-2 rounded" />
+      <button id="filterBtn" class="bg-blue-600 text-white px-4 py-2 rounded">Filter</button>
+      <button id="exportBtn" class="bg-green-600 text-white px-4 py-2 rounded">Export CSV</button>
+    </div>
+
+    <div class="bg-white rounded shadow overflow-x-auto">
+      <table class="w-full min-w-[800px]">
+        <thead class="bg-gray-100">
+          <tr>
+            <th class="p-2">Sale ID</th>
+            <th class="p-2">Date</th>
+            <th class="p-2">Total (pre-discount)</th>
+            <th class="p-2">Discount</th>
+            <th class="p-2">Final Amount</th>
+            <th class="p-2">Items</th>
+            <th class="p-2">Details</th>
+          </tr>
+        </thead>
+        <tbody id="salesTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Modal for sale details -->
+  <div id="detailsModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
+      <h3 class="text-lg font-semibold mb-4">Sale Details</h3>
+      <div id="detailsContent"></div>
+      <div class="mt-4 flex justify-end">
+        <button id="closeModal" class="bg-gray-300 px-4 py-2 rounded">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script lang="js">
+    let currentData = null;
+
+    async function fetchSales(from, to) {
+      const params = new URLSearchParams();
+      if (from) params.append('from', from);
+      if (to) params.append('to', to);
+      const res = await fetch(`/api/sales-history?${params.toString()}`);
+      const data = await res.json();
+      currentData = data;
+      const tbody = document.getElementById('salesTableBody');
+      tbody.innerHTML = data.map(s => `
+        <tr class="border-t">
+          <td class="p-2">${s.id}</td>
+          <td class="p-2">${new Date(s.completed_at).toLocaleString()}</td>
+          <td class="p-2">${s.total_amount.toFixed(0)}</td>
+          <td class="p-2">${s.discount_type === 'percentage' ? s.discount_value + '%' : (s.discount_value ? s.discount_value.toFixed(0) + ' Tsh' : 'None')}</td>
+          <td class="p-2">${s.final_amount.toFixed(0)}</td>
+          <td class="p-2">${s.item_count}</td>
+          <td class="p-2"><button class="view-details bg-blue-600 text-white px-2 py-1 rounded text-sm" data-id="${s.id}">View</button></td>
+        </tr>
+      `).join('');
+      attachViewHandlers();
+    }
+
+    async function viewSaleDetails(id) {
+      const res = await fetch(`/api/sale-items?basketId=${id}`);
+      const items = await res.json();
+      const modal = document.getElementById('detailsModal');
+      const content = document.getElementById('detailsContent');
+      content.innerHTML = `
+        <table class="w-full text-sm">
+          <thead><tr><th>Product</th><th>Qty</th><th>Unit Price</th><th>Total</th></tr></thead>
+          <tbody>
+            ${items.map(i => `
+              <tr><td>${i.product_name}</td><td>${i.quantity}</td><td>${i.unit_price}</td><td>${i.total_price}</td></tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function attachViewHandlers() {
+      document.querySelectorAll('.view-details').forEach(btn => {
+        btn.addEventListener('click', () => viewSaleDetails(btn.dataset.id));
+      });
+    }
+
+    const fromInput = document.getElementById('fromDate');
+    const toInput = document.getElementById('toDate');
+    const filterBtn = document.getElementById('filterBtn');
+    const exportBtn = document.getElementById('exportBtn');
+    const closeModalBtn = document.getElementById('closeModal');
+    const modal = document.getElementById('detailsModal');
+
+    closeModalBtn.addEventListener('click', () => {
+      modal.classList.remove('flex');
+      modal.classList.add('hidden');
+    });
+    window.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.classList.remove('flex');
+        modal.classList.add('hidden');
+      }
+    });
+
+    // Default: last 30 days
+    const today = new Date();
+    const monthAgo = new Date(); monthAgo.setDate(today.getDate() - 30);
+    fromInput.value = monthAgo.toISOString().slice(0,10);
+    toInput.value = today.toISOString().slice(0,10);
+    fetchSales(fromInput.value, toInput.value);
+
+    filterBtn.addEventListener('click', () => {
+      fetchSales(fromInput.value, toInput.value);
+    });
+
+    exportBtn.addEventListener('click', () => {
+      if (!currentData) return;
+      const csv = [
+        ['Sale ID', 'Date', 'Total', 'Discount', 'Final Amount', 'Items'],
+        ...currentData.map(s => [s.id, new Date(s.completed_at).toLocaleString(), s.total_amount, s.discount_value ? (s.discount_type === 'percentage' ? s.discount_value + '%' : s.discount_value + ' Tsh') : 'None', s.final_amount, s.item_count])
+      ].map(row => row.join(',')).join('\n');
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `sales-${new Date().toISOString().slice(0,10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+  </script>
+</AdminLayout>
