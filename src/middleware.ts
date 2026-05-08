@@ -1,10 +1,16 @@
 import { defineMiddleware } from 'astro:middleware';
 import { rawDb } from './db';
+import { getTranslation, getAvailableLanguages } from './lib/i18n';
 
 export const onRequest = defineMiddleware(async (context, next) => {
   const url = new URL(context.request.url);
   const sessionId = context.cookies.get('session')?.value;
-  
+
+  const cookieLang = context.cookies.get('lang')?.value;
+  const lang = cookieLang && ['en', 'sw'].includes(cookieLang) ? cookieLang : 'en';
+  context.locals.lang = lang;
+  context.locals.t = (key: string) => getTranslation(lang, key);
+
   // Default values
   context.locals.user = undefined;
   context.locals.permissions = [];

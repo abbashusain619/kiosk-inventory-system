@@ -9,6 +9,8 @@ declare namespace App {
       roleName: string;
     };
     permissions?: string[];
+    lang: string;
+    t: (key: string) => string;
   }
 }
 interface Window {
