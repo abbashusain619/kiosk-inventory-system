@@ -1,0 +1,105 @@
+---
+export const prerender = false;
+import AdminLayout from "../../layouts/AdminLayout.astro";
+import { rawDb } from "../../db";
+
+const { permissions } = Astro.locals;
+if (!permissions?.includes("audit.view")) {
+    return Astro.redirect("/admin/dashboard");
+}
+
+const logs = rawDb
+    .prepare(
+        `
+  SELECT a.*, u.email as user_email
+  FROM audit_logs a
+  LEFT JOIN admin_user u ON a.user_id = u.id
+  ORDER BY a.created_at DESC
+  LIMIT 500
+`,
+    )
+    .all() as any[];
+---
+
+<AdminLayout>
+    <div class="max-w-6xl mx-auto">
+        <h1 class="text-2xl font-bold mb-4">Audit Logs</h1>
+        <div class="bg-white rounded shadow overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-gray-100">
+                    <tr>
+                        <th class="p-2">Time</th>
+                        <th class="p-2">User</th>
+                        <th class="p-2">Action</th>
+                        <th class="p-2">Table</th>
+                        <th class="p-2">Record ID</th>
+                        <th class="p-2">Details</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {
+                        logs.map((log) => (
+                            <tr class="border-t">
+                                <td class="p-2">
+                                    {new Date(log.created_at).toLocaleString()}
+                                </td>
+                                <td class="p-2">
+                                    {log.user_email || log.user_id}
+                                </td>
+                                <td class="p-2">{log.action}</td>
+                                <td class="p-2">{log.table_name}</td>
+                                <td class="p-2">{log.record_id || "-"}</td>
+                                <td class="p-2">
+                                    <button
+                                        class="view-details text-blue-600"
+                                        data-old={log.old_data}
+                                        data-new={log.new_data}
+                                    >
+                                        View
+                                    </button>
+                                </td>
+                            </tr>
+                        ))
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Modal for details -->
+    <div
+        id="detailsModal"
+        class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center z-50"
+    >
+        <div class="bg-white rounded-lg shadow-lg max-w-lg w-full p-6">
+            <h3 class="text-lg font-semibold mb-4">Change Details</h3>
+            <div id="detailsContent" class="text-sm"></div>
+            <div class="mt-4 flex justify-end">
+                <button id="closeModal" class="bg-gray-300 px-4 py-2 rounded"
+                    >Close</button
+                >
+            </div>
+        </div>
+    </div>
+
+    <script lang="js">
+        document.querySelectorAll(".view-details").forEach((btn) => {
+            btn.addEventListener("click", () => {
+                const oldData = btn.getAttribute("data-old");
+                const newData = btn.getAttribute("data-new");
+                const modal = document.getElementById("detailsModal");
+                const content = document.getElementById("detailsContent");
+                content.innerHTML = `
+          <div class="mb-2"><strong>Old data:</strong><pre class="bg-gray-100 p-2 rounded overflow-x-auto">${JSON.stringify(JSON.parse(oldData || "null"), null, 2)}</pre></div>
+          <div><strong>New data:</strong><pre class="bg-gray-100 p-2 rounded overflow-x-auto">${JSON.stringify(JSON.parse(newData || "null"), null, 2)}</pre></div>
+        `;
+                modal.classList.remove("hidden");
+                modal.classList.add("flex");
+            });
+        });
+        document.getElementById("closeModal").addEventListener("click", () => {
+            document.getElementById("detailsModal").classList.remove("flex");
+            document.getElementById("detailsModal").classList.add("hidden");
+        });
+    </script>
+</AdminLayout>

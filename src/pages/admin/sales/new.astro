@@ -10,7 +10,7 @@ if (!permissions?.includes("sales.create")) {
   return Astro.redirect("/admin/dashboard");
 }
 
-// Fetch all active products for dropdown
+// Fetch all active products for dropdown (include unit only, bulk fields not needed now)
 const products = rawDb
   .prepare(
     "SELECT id, name, price, stock, unit FROM products WHERE active = 1 ORDER BY name"
@@ -37,7 +37,7 @@ const products = rawDb
       </div>
     )}
 
-    <!-- Product selector (dropdown + quantity + add) -->
+    <!-- Product selector with quantity and unit -->
     <div class="bg-white p-4 rounded shadow mb-4">
       <div class="flex gap-2 items-end">
         <div class="flex-1">
@@ -60,6 +60,12 @@ const products = rawDb
             min="1"
             class="border p-2 rounded w-full"
           />
+        </div>
+        <div class="w-32">
+          <label class="block font-semibold mb-1">Unit</label>
+          <select id="unitSelect" class="border p-2 rounded w-full">
+            <option value="base">piece</option>
+          </select>
         </div>
         <button id="addBtn" class="bg-blue-600 text-white px-4 py-2 rounded"
           >Add</button
@@ -135,7 +141,6 @@ const products = rawDb
             <td></td>
           </tr>
         </tfoot>
-      </table>
     </div>
 
     <div class="mt-4 flex gap-2">
@@ -157,6 +162,7 @@ const products = rawDb
     // DOM elements
     const productSelect = document.getElementById("productSelect");
     const quantityInput = document.getElementById("quantity");
+    const unitSelect = document.getElementById("unitSelect");
     const addBtn = document.getElementById("addBtn");
     const basketBody = document.getElementById("basketBody");
     const subtotalSpan = document.getElementById("subtotal");
@@ -168,6 +174,11 @@ const products = rawDb
     const addByCodeBtn = document.getElementById("addByCodeBtn");
     const scanBarcodeBtn = document.getElementById("scanBarcodeBtn");
 
+    // Unit conversion variables
+    let currentUnit = "piece";
+    let currentBulkUnit = null;
+    let currentBulkFactor = 1;
+
     // Auto-hide success toast
     const toast = document.getElementById("toast");
     if (toast) {
@@ -177,8 +188,28 @@ const products = rawDb
       }, 3000);
     }
 
-    // Helper: add product to basket (reused)
-    function addProductToBasket(productId, name, unitPrice, qty = 1) {
+    // Fetch product units from API
+    async function loadProductUnits(productId) {
+      if (!productId) return;
+      const res = await fetch(`/api/product-unit?id=${productId}`);
+      if (res.ok) {
+        const data = await res.json();
+        currentUnit = data.unit || "piece";
+        currentBulkUnit = data.bulkUnit;
+        currentBulkFactor = data.bulkFactor || 1;
+        // Populate unit dropdown
+        unitSelect.innerHTML = `<option value="base">${currentUnit}</option>`;
+        if (currentBulkUnit) {
+          unitSelect.innerHTML += `<option value="bulk">${currentBulkUnit}</option>`;
+        }
+      } else {
+        // Fallback
+        unitSelect.innerHTML = `<option value="base">piece</option>`;
+      }
+    }
+
+    // Helper: add product to basket (quantity is already in base units)
+    function addProductToBasket(productId, name, unitPrice, qty) {
       const product = productsData.find((p) => p.id === productId);
       if (!product) return false;
       if (qty > product.stock) {
@@ -288,18 +319,34 @@ const products = rawDb
       });
     }
 
-    // Add product from dropdown
+    // When product dropdown changes, load unit info
+    productSelect.addEventListener("change", () => {
+      const productId = productSelect.value;
+      if (productId) loadProductUnits(productId);
+      else {
+        unitSelect.innerHTML = `<option value="base">piece</option>`;
+      }
+    });
+
+    // Add product from dropdown with unit conversion
     if (addBtn && productSelect && quantityInput) {
       addBtn.addEventListener("click", () => {
         const productId = parseInt(productSelect.value);
         if (!productId) return;
         const product = productsData.find((p) => p.id === productId);
         if (!product) return;
-        let qty = quantityInput ? parseInt(quantityInput.value) : 1;
-        if (isNaN(qty) || qty < 1) qty = 1;
-        addProductToBasket(productId, product.name, product.price, qty);
+        let rawQty = quantityInput ? parseFloat(quantityInput.value) : 1;
+        if (isNaN(rawQty) || rawQty < 1) rawQty = 1;
+        // Convert to base quantity based on selected unit
+        const selectedUnit = unitSelect.value;
+        let baseQty = rawQty;
+        if (selectedUnit === "bulk" && currentBulkUnit && currentBulkFactor > 0) {
+          baseQty = rawQty * currentBulkFactor;
+        }
+        addProductToBasket(productId, product.name, product.price, baseQty);
         productSelect.value = "";
         if (quantityInput) quantityInput.value = "1";
+        unitSelect.innerHTML = `<option value="base">piece</option>`;
       });
     }
 
@@ -313,7 +360,16 @@ const products = rawDb
         );
         if (res.ok) {
           const product = await res.json();
-          addProductToBasket(product.id, product.name, product.price, 1);
+          // After getting product, load its units
+          await loadProductUnits(product.id);
+          // Use quantity 1 and selected unit (default base)
+          let rawQty = 1;
+          const selectedUnit = unitSelect.value;
+          let baseQty = rawQty;
+          if (selectedUnit === "bulk" && currentBulkUnit && currentBulkFactor > 0) {
+            baseQty = rawQty * currentBulkFactor;
+          }
+          addProductToBasket(product.id, product.name, product.price, baseQty);
           barcodeInput.value = "";
         } else {
           window.showToast("Product not found", "error");
@@ -330,7 +386,14 @@ const products = rawDb
           );
           if (res.ok) {
             const product = await res.json();
-            addProductToBasket(product.id, product.name, product.price, 1);
+            await loadProductUnits(product.id);
+            let rawQty = 1;
+            const selectedUnit = unitSelect.value;
+            let baseQty = rawQty;
+            if (selectedUnit === "bulk" && currentBulkUnit && currentBulkFactor > 0) {
+              baseQty = rawQty * currentBulkFactor;
+            }
+            addProductToBasket(product.id, product.name, product.price, baseQty);
           } else {
             window.showToast("Product not found", "error");
           }

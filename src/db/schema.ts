@@ -11,6 +11,8 @@ export const products = sqliteTable('products', {
   stock: real('stock').notNull().default(0), // current quantity
   minStock: integer('min_stock').default(5), //low stock alert
   unit: text('unit').default('piece'),
+  bulkUnit: text('bulk_unit'),
+  bulkFactor: real('bulk_factor').default(1),
   imageUrl: text('image_url'),
   active: integer('active', { mode: 'boolean' }).default(true),
   costPrice: real('cost_price').default(0), // average or last purchase cost

@@ -7,6 +7,7 @@ if (!user) {
 const canManageUsers = permissions?.includes('users.manage') ?? false;
 const canManageRoles = permissions?.includes('roles.manage') ?? false;
 const canBackup = permissions?.includes('backup.download') ?? false;
+const canViewAudit = permissions?.includes('audit.view') ?? false;
 ---
 
 <Layout>
@@ -22,6 +23,7 @@ const canBackup = permissions?.includes('backup.download') ?? false;
     <a href="/admin/settings" class="hover:underline">Settings</a>
     {canManageUsers && <a href="/admin/users" class="hover:underline">Users</a>}
     {canManageRoles && <a href="/admin/roles" class="hover:underline">Roles</a>}
+    {canViewAudit && <a href="/admin/audit" class="hover:underline">Audit Logs</a>}
     {canBackup && <a href="/admin/backup" class="hover:underline">Backup</a>}
     <form method="post" action="/api/logout" class="ml-auto">
       <button type="submit" class="hover:underline">Logout</button>

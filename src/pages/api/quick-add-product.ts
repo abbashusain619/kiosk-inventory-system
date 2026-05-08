@@ -7,11 +7,13 @@ import { ValidationError } from '../../lib/errors';
 import { db } from '../../db';
 import { categories } from '../../db/schema';
 import { eq } from 'drizzle-orm';
+import { logAudit } from '../../lib/audit';
 
 const postHandler: APIRoute = async ({ request, locals }) => {
-    if (!locals.permissions?.includes('products.edit')) {
+  if (!locals.permissions?.includes('products.edit')) {
     throw new ValidationError('You do not have permission to add products');
   }
+
   const formData = await request.formData();
   const name = formData.get('name')?.toString();
   const price = parseFloat(formData.get('price') as string);
@@ -34,7 +36,9 @@ const postHandler: APIRoute = async ({ request, locals }) => {
     }
   }
 
-  // Prepare product data (all fields required by ProductSchema)
+  // Generate a unique SKU (temporary, can be edited later)
+  const tempSku = `SKU-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+  
   const productData = {
     name,
     price,
@@ -47,10 +51,18 @@ const postHandler: APIRoute = async ({ request, locals }) => {
     cost_price: null,
     image_url: null,
     supplier_id: null,
+    sku: tempSku,
+    barcode: null,
   };
 
   const newProduct = await save('products', productData);
   broadcastEvent({ type: 'product-created', product: newProduct });
+  
+  // Audit log
+  if (locals.user?.id) {
+    await logAudit(locals.user.id, 'CREATE', 'products', newProduct.id, null, productData);
+  }
+  
   return new Response(JSON.stringify({ id: newProduct.id, name: newProduct.name }), {
     headers: { 'Content-Type': 'application/json' },
   });

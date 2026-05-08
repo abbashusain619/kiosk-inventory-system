@@ -4,6 +4,7 @@ import { createApiHandler } from '../../lib/api-utils';
 import { save, findById } from '../../services/db';
 import { broadcastEvent } from '../../lib/sse';
 import { ValidationError } from '../../lib/errors';
+import { logAudit } from '../../lib/audit';
 
 const postHandler: APIRoute = async ({ request, cookies, redirect, locals }) => {
   const sessionId = cookies.get('session')?.value;
@@ -24,10 +25,17 @@ const postHandler: APIRoute = async ({ request, cookies, redirect, locals }) => 
   const product = await findById('products', productId);
   if (!product) throw new ValidationError('Product not found');
 
+  const oldStock = product.stock;
+
   // Update only the stock field using save() with id
   await save('products', { id: productId, stock: newStock });
 
   broadcastEvent({ type: 'stock-update', productId, stock: newStock });
+
+  // Audit log
+  if (locals.user?.id) {
+    await logAudit(locals.user.id, 'UPDATE_STOCK', 'products', productId, { stock: oldStock }, { stock: newStock });
+  }
 
   return redirect('/admin/dashboard');
 };

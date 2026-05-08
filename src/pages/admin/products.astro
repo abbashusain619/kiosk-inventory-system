@@ -76,6 +76,8 @@ const allSuppliers = await db.select().from(suppliers);
               <option value="L">L</option>
               <option value="ml">ml</option>
             </select>
+            <input type="text" name="bulkUnit" placeholder="Bulk unit (e.g., carton)" class="border p-2 rounded" />
+            <input type="number" step="0.01" name="bulkFactor" placeholder="Bulk factor (e.g., 12)" class="border p-2 rounded" value="1" />
             <select name="categoryId" class="border p-2 rounded">
               <option value="">Select category</option>
               {allCategories.map(cat => <option value={cat.id}>{cat.name}</option>)}
@@ -111,6 +113,8 @@ const allSuppliers = await db.select().from(suppliers);
             <th class="p-3 text-left">Stock</th>
             <th class="p-3 text-left">Min Stock</th>
             <th class="p-3 text-left">Unit</th>
+            <th class="p-3 text-left">Bulk Unit</th>
+            <th class="p-3 text-left">Bulk Factor</th>
             <th class="p-3 text-left">Category</th>
             <th class="p-3 text-left">Supplier</th>
             <th class="p-3 text-center">Actions</th>
@@ -146,6 +150,8 @@ const allSuppliers = await db.select().from(suppliers);
                   <input type="number" step="1" name="minStock" value={product.min_stock || 5} class="border p-1 w-16 text-sm" disabled={isDeleted} />
                 </td>
                 <td class="p-3">{product.unit || 'piece'}</td>
+                <td class="p-3">{product.bulk_unit || '-'}</td>
+                <td class="p-3">{product.bulk_factor || 1}</td>
                 <td class="p-3">{cat?.name || '-'}</td>
                 <td class="p-3">{sup?.name || '-'}</td>
                 <td class="p-3 text-center">
@@ -169,6 +175,8 @@ const allSuppliers = await db.select().from(suppliers);
                             <option value="L" selected={product.unit === 'L'}>L</option>
                             <option value="ml" selected={product.unit === 'ml'}>ml</option>
                           </select>
+                          <input type="text" name="bulkUnit" value={product.bulk_unit || ''} class="border p-1 w-24 text-sm" disabled={isDeleted} />
+                          <input type="number" step="0.01" name="bulkFactor" value={product.bulk_factor || 1} class="border p-1 w-16 text-sm" disabled={isDeleted} />
                           <select name="categoryId" class="border p-1 text-sm" disabled={isDeleted}>
                             <option value="">None</option>
                             {allCategories.map(cat => (

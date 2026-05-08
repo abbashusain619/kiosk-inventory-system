@@ -1,33 +1,31 @@
 export const prerender = false;
 import type { APIRoute } from 'astro';
-import { createApiHandler } from '../../lib/api-utils';
-import { save } from '../../services/db';
-import { broadcastEvent } from '../../lib/sse';
+import { rawDb } from '../../db';
 import { ValidationError } from '../../lib/errors';
+import { logAudit } from '../../lib/audit';
 
-const postHandler: APIRoute = async ({ request, locals }) => {
-    if (!locals.permissions?.includes('suppliers.edit')) {
+export const POST: APIRoute = async ({ request, locals }) => {
+  if (!locals.permissions?.includes('suppliers.edit')) {
     throw new ValidationError('You do not have permission to add suppliers');
   }
+
   const formData = await request.formData();
   const name = formData.get('name')?.toString();
   const phone = formData.get('phone')?.toString() || null;
 
-  if (!name) {
-    throw new ValidationError('Supplier name required');
+  if (!name) throw new ValidationError('Supplier name required');
+
+  const stmt = rawDb.prepare('INSERT INTO suppliers (name, phone) VALUES (?, ?)');
+  const result = stmt.run(name, phone);
+  const newId = Number(result.lastInsertRowid);
+  const newSupplier = { id: newId, name, phone };
+
+  // Audit log
+  if (locals.user?.id) {
+    await logAudit(locals.user.id, 'CREATE', 'suppliers', newId, null, newSupplier);
   }
 
-  const supplierData = {
-    name,
-    phone,
-  };
-
-  const newSupplier = await save('suppliers', supplierData);
-  broadcastEvent({ type: 'supplier-created', supplier: newSupplier });
-
-  return new Response(JSON.stringify({ id: newSupplier.id, name: newSupplier.name }), {
+  return new Response(JSON.stringify({ id: newId, name }), {
     headers: { 'Content-Type': 'application/json' },
   });
 };
-
-export const POST = createApiHandler(postHandler);

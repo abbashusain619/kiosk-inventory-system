@@ -3,6 +3,7 @@ import type { APIRoute } from 'astro';
 import { rawDb } from '../../../db';
 import { UnauthorizedError, ValidationError } from '../../../lib/errors';
 import bcrypt from 'bcryptjs';
+import { logAudit } from '../../../lib/audit';
 
 export const POST: APIRoute = async ({ request, locals }) => {
   if (!locals.permissions?.includes('users.manage')) {
@@ -27,8 +28,14 @@ export const POST: APIRoute = async ({ request, locals }) => {
   const hashed = bcrypt.hashSync(password, 10);
   const stmt = rawDb.prepare('INSERT INTO admin_user (email, hashed_password, role_id) VALUES (?, ?, ?)');
   const result = stmt.run(email, hashed, roleId);
+  const newUserId = Number(result.lastInsertRowid);
 
-  return new Response(JSON.stringify({ id: result.lastInsertRowid, email, roleId }), {
+  // Audit log
+  if (locals.user?.id) {
+    await logAudit(locals.user.id, 'CREATE', 'admin_user', newUserId, null, { email, roleId });
+  }
+
+  return new Response(JSON.stringify({ id: newUserId, email, roleId }), {
     headers: { 'Content-Type': 'application/json' },
   });
 };

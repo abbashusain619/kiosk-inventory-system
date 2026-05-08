@@ -5,6 +5,7 @@ import { adminUser } from '../../db/schema';
 import { eq } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 import { randomBytes } from 'crypto';
+import { logAudit } from '../../lib/audit';
 
 export const POST: APIRoute = async ({ request, cookies }) => {
   const formData = await request.formData();
@@ -31,8 +32,8 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
   cookies.set('session', sessionId, { path: '/', httpOnly: true, sameSite: 'lax', expires: new Date(expiresAt) });
 
-  console.log('Login: session created', sessionId, 'expires', new Date(expiresAt));
-console.log('Cookie set:', cookies.get('session'));
+  // Audit log for successful login
+  await logAudit(user.id, 'LOGIN', 'admin_user', user.id, null, { email });
 
   return new Response(null, { status: 302, headers: { Location: '/admin/dashboard' } });
 };

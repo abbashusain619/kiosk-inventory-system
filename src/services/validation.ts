@@ -11,6 +11,8 @@ export const ProductSchema = z.object({
   stock: z.number().nonnegative().default(0),
   min_stock: z.number().nonnegative().default(5),
   unit: z.string().default('piece'),
+  bulk_unit: z.string().optional().nullable(),
+  bulk_factor: z.number().positive().default(1),
   category_id: z.number().int().positive().nullable().optional(),
   supplier_id: z.number().int().positive().nullable().optional(),
   image_url: z.string().url().nullable().optional(),

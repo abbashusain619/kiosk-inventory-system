@@ -2,15 +2,18 @@ export const prerender = false;
 import type { APIRoute } from 'astro';
 import { createApiHandler } from '../../lib/api-utils';
 import { save, findById } from '../../services/db';
+import { db } from '../../db';
+import { products } from '../../db/schema';
+import { eq } from 'drizzle-orm';
 import { broadcastEvent } from '../../lib/sse';
 import { ValidationError, UnauthorizedError, NotFoundError } from '../../lib/errors';
+import { logAudit } from '../../lib/audit';
 
 const postHandler: APIRoute = async ({ request, cookies, redirect, locals }) => {
   const sessionId = cookies.get('session')?.value;
   if (!sessionId) throw new UnauthorizedError();
   const userId = locals.user?.id || 1;
 
-  // Permission check
   if (!locals.permissions?.includes('sales.create')) {
     throw new ValidationError('You do not have permission to create sales');
   }
@@ -30,7 +33,6 @@ const postHandler: APIRoute = async ({ request, cookies, redirect, locals }) => 
     throw new ValidationError(`Insufficient stock. Only ${product.stock} available.`);
   }
 
-  // Determine selling price (use promo price if enabled and lower)
   const finalPrice = (usePromo && product.on_promotion && product.promo_price && product.promo_price < product.price)
     ? product.promo_price
     : product.price;
@@ -68,13 +70,19 @@ const postHandler: APIRoute = async ({ request, cookies, redirect, locals }) => 
     created_at: now,
     user_id: userId,
   };
-  await save('stock_movements', movementData);
+  const movement = await save('stock_movements', movementData);
 
   // Update product stock
   const newStock = product.stock - quantity;
-  await save('products', { id: productId, stock: newStock });
+  await db.update(products).set({ stock: newStock }).where(eq(products.id, productId));
 
   broadcastEvent({ type: 'stock-update', productId, stock: newStock });
+
+  // Audit log for sale
+  if (locals.user?.id) {
+    await logAudit(locals.user.id, 'CREATE', 'sale_baskets', basketId, null, basketData);
+    await logAudit(locals.user.id, 'CREATE', 'stock_movements', movement.id, null, movementData);
+  }
 
   return redirect('/admin/products?sold=1');
 };

@@ -1,9 +1,10 @@
 export const prerender = false;
 import type { APIRoute } from 'astro';
 import { createApiHandler } from '../../lib/api-utils';
-import { save } from '../../services/db';
+import { save, findById } from '../../services/db';
 import { broadcastEvent } from '../../lib/sse';
 import { ValidationError } from '../../lib/errors';
+import { logAudit } from '../../lib/audit';
 
 const postHandler: APIRoute = async ({ request, redirect, locals }) => {
   if (!locals.permissions?.includes('products.edit')) {
@@ -12,6 +13,11 @@ const postHandler: APIRoute = async ({ request, redirect, locals }) => {
 
   const formData = await request.formData();
   const id = Number(formData.get('id'));
+
+  // Fetch old product data
+  const oldProduct = await findById('products', id);
+  if (!oldProduct) throw new ValidationError('Product not found');
+
   const data = {
     id,
     name: formData.get('name')?.toString(),
@@ -22,6 +28,8 @@ const postHandler: APIRoute = async ({ request, redirect, locals }) => {
     stock: Number(formData.get('stock')),
     min_stock: formData.get('minStock') ? Number(formData.get('minStock')) : 5,
     unit: formData.get('unit')?.toString() || 'piece',
+    bulk_unit: formData.get('bulkUnit')?.toString() || null,
+    bulk_factor: formData.get('bulkFactor') ? Number(formData.get('bulkFactor')) : 1,
     category_id: formData.get('categoryId') ? Number(formData.get('categoryId')) : null,
     supplier_id: formData.get('supplierId') ? Number(formData.get('supplierId')) : null,
     image_url: formData.get('imageUrl')?.toString() || null,
@@ -41,6 +49,8 @@ const postHandler: APIRoute = async ({ request, redirect, locals }) => {
     stock: updated.stock,
     minStock: updated.min_stock,
     unit: updated.unit,
+    bulkUnit: updated.bulk_unit,
+    bulkFactor: updated.bulk_factor,
     categoryId: updated.category_id,
     supplierId: updated.supplier_id,
     imageUrl: updated.image_url,
@@ -49,6 +59,11 @@ const postHandler: APIRoute = async ({ request, redirect, locals }) => {
     promoPrice: updated.promo_price,
     active: updated.active,
   });
+
+  // Audit log
+  if (locals.user?.id) {
+    await logAudit(locals.user.id, 'UPDATE', 'products', id, oldProduct, updated);
+  }
 
   return redirect('/admin/products');
 };

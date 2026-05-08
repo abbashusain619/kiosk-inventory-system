@@ -3,6 +3,7 @@ import type { APIRoute } from 'astro';
 import { rawDb } from '../../../db';
 import { ValidationError } from '../../../lib/errors';
 import bcrypt from 'bcryptjs';
+import { logAudit } from '../../../lib/audit';
 
 export const POST: APIRoute = async ({ request, locals }) => {
   if (!locals.permissions?.includes('users.manage')) {
@@ -15,6 +16,10 @@ export const POST: APIRoute = async ({ request, locals }) => {
   const newPassword = formData.get('newPassword')?.toString();
 
   if (isNaN(id)) throw new ValidationError('Invalid user ID');
+
+  // Fetch old user data before update (exclude password hash)
+  const oldUser = rawDb.prepare('SELECT id, email, role_id FROM admin_user WHERE id = ?').get(id) as any;
+  if (!oldUser) throw new ValidationError('User not found');
 
   const updates: string[] = [];
   const values: any[] = [];
@@ -36,6 +41,12 @@ export const POST: APIRoute = async ({ request, locals }) => {
   values.push(id);
   const stmt = rawDb.prepare(`UPDATE admin_user SET ${updates.join(', ')} WHERE id = ?`);
   stmt.run(...values);
+
+  // Audit log
+  if (locals.user?.id) {
+    const newUser = { id, email: oldUser.email, role_id: roleId !== undefined ? roleId : oldUser.role_id };
+    await logAudit(locals.user.id, 'UPDATE', 'admin_user', id, oldUser, newUser);
+  }
 
   return new Response(JSON.stringify({ success: true }), {
     headers: { 'Content-Type': 'application/json' },

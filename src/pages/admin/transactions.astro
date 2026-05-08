@@ -69,7 +69,7 @@ const categories = rawDb
                     <option value={p.id}>{p.name}</option>
                   ))}
                 </select>
-                <div class="flex gap-2 items-center">
+                <div class="flex gap-2 items-center mt-2">
                   <input
                     type="text"
                     id="barcodeInput"
@@ -101,24 +101,41 @@ const categories = rawDb
                   </button>
                 )}
               </div>
-              <select name="type" required class="border p-2 rounded">
+              <select name="type" id="movementType" required class="border p-2 rounded">
                 {canIn && <option value="in">Purchase (Stock In)</option>}
                 {canAdjust && <option value="adjustment">Adjustment</option>}
+                {canAdjust && <option value="cost_correction">Cost Correction (adjust cost only)</option>}
               </select>
+              <div class="flex gap-2">
+                <input
+                  type="number"
+                  step="0.01"
+                  name="quantity"
+                  id="quantityInput"
+                  placeholder="Quantity"
+                  required
+                  class="border p-2 rounded flex-1"
+                />
+                <select id="unitSelect" class="border p-2 rounded w-32">
+                  <!-- dynamically populated -->
+                </select>
+              </div>
               <input
                 type="number"
                 step="0.01"
-                name="quantity"
-                placeholder="Quantity (+ for add, - for remove)"
-                required
+                name="totalCost"
+                id="totalCostInput"
+                placeholder="Total cost (for purchase)"
                 class="border p-2 rounded"
               />
               <input
                 type="number"
                 step="0.01"
-                name="totalCost"
-                placeholder="Total cost (for purchase)"
+                name="newCost"
+                id="newCostInput"
+                placeholder="New cost per unit (for cost correction)"
                 class="border p-2 rounded"
+                style="display: none;"
               />
               <div class="relative">
                 <select
@@ -184,7 +201,7 @@ const categories = rawDb
                 <td class="p-2">{m.total_price || m.total_cost || "-"}</td>
                 <td class="p-2">{m.reason || "-"}</td>
                 <td class="p-2">{m.user_id}</td>
-              </tr>
+              </td>
             ))
           }
         </tbody>
@@ -192,7 +209,7 @@ const categories = rawDb
     </div>
   </div>
 
-  <!-- Modal for Quick Add Product (only shown if user has permission; but we define always to avoid undefined references, but button only visible if canAddProduct) -->
+  <!-- Modal for Quick Add Product (with bulk fields) -->
   <div
     id="productModal"
     class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center z-50"
@@ -202,59 +219,43 @@ const categories = rawDb
       <form id="quickProductForm">
         <div class="mb-3">
           <label class="block text-sm font-medium">Product Name *</label>
-          <input
-            type="text"
-            id="prodName"
-            required
-            class="border p-2 rounded w-full"
-          />
+          <input type="text" id="prodName" required class="border p-2 rounded w-full" />
         </div>
         <div class="mb-3">
           <label class="block text-sm font-medium">Selling Price *</label>
-          <input
-            type="number"
-            step="0.01"
-            id="prodPrice"
-            required
-            class="border p-2 rounded w-full"
-          />
+          <input type="number" step="0.01" id="prodPrice" required class="border p-2 rounded w-full" />
         </div>
         <div class="mb-3">
           <label class="block text-sm font-medium">Unit</label>
           <select id="prodUnit" class="border p-2 rounded w-full">
-            <option value="piece">piece</option><option value="kg">kg</option
-            ><option value="g">g</option><option value="L">L</option><option
-              value="ml">ml</option
-            >
+            <option value="piece">piece</option><option value="kg">kg</option><option value="g">g</option>
+            <option value="L">L</option><option value="ml">ml</option>
           </select>
         </div>
         <div class="mb-3">
+          <label class="block text-sm font-medium">Bulk Unit (optional)</label>
+          <input type="text" id="prodBulkUnit" placeholder="e.g., carton" class="border p-2 rounded w-full" />
+        </div>
+        <div class="mb-3">
+          <label class="block text-sm font-medium">Bulk Factor (optional)</label>
+          <input type="number" step="0.01" id="prodBulkFactor" placeholder="e.g., 12" class="border p-2 rounded w-full" value="1" />
+        </div>
+        <div class="mb-3">
           <label class="block text-sm font-medium">Category (optional)</label>
-          <input
-            type="text"
-            id="prodCategory"
-            list="categoryOptions"
-            class="border p-2 rounded w-full"
-          />
+          <input type="text" id="prodCategory" list="categoryOptions" class="border p-2 rounded w-full" />
           <datalist id="categoryOptions">
             {categories.map((c) => <option value={c.name} />)}
           </datalist>
         </div>
         <div class="flex justify-end gap-2">
-          <button
-            type="button"
-            id="closeProductModal"
-            class="bg-gray-300 px-4 py-2 rounded">Cancel</button
-          >
-          <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded"
-            >Create Product</button
-          >
+          <button type="button" id="closeProductModal" class="bg-gray-300 px-4 py-2 rounded">Cancel</button>
+          <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded">Create Product</button>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- Modal for Quick Add Supplier -->
+  <!-- Modal for Quick Add Supplier (unchanged) -->
   <div
     id="supplierModal"
     class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center z-50"
@@ -264,26 +265,15 @@ const categories = rawDb
       <form id="quickSupplierForm">
         <div class="mb-3">
           <label class="block text-sm font-medium">Supplier Name *</label>
-          <input
-            type="text"
-            id="supName"
-            required
-            class="border p-2 rounded w-full"
-          />
+          <input type="text" id="supName" required class="border p-2 rounded w-full" />
         </div>
         <div class="mb-3">
           <label class="block text-sm font-medium">Phone (optional)</label>
           <input type="text" id="supPhone" class="border p-2 rounded w-full" />
         </div>
         <div class="flex justify-end gap-2">
-          <button
-            type="button"
-            id="closeSupplierModal"
-            class="bg-gray-300 px-4 py-2 rounded">Cancel</button
-          >
-          <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded"
-            >Create Supplier</button
-          >
+          <button type="button" id="closeSupplierModal" class="bg-gray-300 px-4 py-2 rounded">Cancel</button>
+          <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded">Create Supplier</button>
         </div>
       </form>
     </div>
@@ -291,6 +281,7 @@ const categories = rawDb
 
   <script lang="js">
     document.addEventListener("DOMContentLoaded", () => {
+      // DOM elements
       const productModal = document.getElementById("productModal");
       const supplierModal = document.getElementById("supplierModal");
       const quickProductBtn = document.getElementById("quickAddProductBtn");
@@ -305,53 +296,38 @@ const categories = rawDb
       const barcodeInput = document.getElementById("barcodeInput");
       const lookupBtn = document.getElementById("lookupBarcodeBtn");
       const scanBtn = document.getElementById("scanBarcodeTransactionsBtn");
+      const movementType = document.getElementById("movementType");
+      const quantityInput = document.getElementById("quantityInput");
+      const totalCostInput = document.getElementById("totalCostInput");
+      const newCostInput = document.getElementById("newCostInput");
+      const unitSelect = document.getElementById("unitSelect");
 
-      function showModal(modal) {
-        if (modal) {
-          modal.classList.remove("hidden");
-          modal.classList.add("flex");
-        }
-      }
-      function hideModal(modal) {
-        if (modal) {
-          modal.classList.remove("flex");
-          modal.classList.add("hidden");
-        }
-      }
+      let currentUnit = "piece";
+      let currentBulkFactor = 1;
+      let currentBulkUnit = null;
 
-      if (quickProductBtn)
-        quickProductBtn.addEventListener("click", () =>
-          showModal(productModal),
-        );
-      if (closeProductModal)
-        closeProductModal.addEventListener("click", () =>
-          hideModal(productModal),
-        );
-      if (quickSupplierBtn)
-        quickSupplierBtn.addEventListener("click", () =>
-          showModal(supplierModal),
-        );
-      if (closeSupplierModal)
-        closeSupplierModal.addEventListener("click", () =>
-          hideModal(supplierModal),
-        );
+      // Helper: show/hide modal
+      function showModal(modal) { if (modal) { modal.classList.remove("hidden"); modal.classList.add("flex"); } }
+      function hideModal(modal) { if (modal) { modal.classList.remove("flex"); modal.classList.add("hidden"); } }
 
+      // Quick add product logic (includes bulk fields)
       if (productForm) {
         productForm.addEventListener("submit", async (e) => {
           e.preventDefault();
           const name = document.getElementById("prodName").value;
           const price = document.getElementById("prodPrice").value;
           const unit = document.getElementById("prodUnit").value;
+          const bulkUnit = document.getElementById("prodBulkUnit").value;
+          const bulkFactor = document.getElementById("prodBulkFactor").value;
           const category = document.getElementById("prodCategory").value;
           const fd = new FormData();
           fd.append("name", name);
           fd.append("price", price);
           fd.append("unit", unit);
+          if (bulkUnit) fd.append("bulkUnit", bulkUnit);
+          if (bulkFactor && bulkFactor !== "1") fd.append("bulkFactor", bulkFactor);
           if (category) fd.append("category", category);
-          const res = await fetch("/api/quick-add-product", {
-            method: "POST",
-            body: fd,
-          });
+          const res = await fetch("/api/quick-add-product", { method: "POST", body: fd });
           if (res.ok) {
             const newProduct = await res.json();
             const opt = document.createElement("option");
@@ -359,6 +335,8 @@ const categories = rawDb
             opt.textContent = newProduct.name;
             if (productSelect) productSelect.appendChild(opt);
             if (productSelect) productSelect.value = newProduct.id;
+            // Also trigger product change to load units
+            productSelect.dispatchEvent(new Event("change"));
             hideModal(productModal);
             productForm.reset();
             if (window.showToast) window.showToast("Product created!");
@@ -371,26 +349,74 @@ const categories = rawDb
         });
       }
 
+      // Quick add supplier logic
+      if (supplierForm) {
+        supplierForm.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const name = document.getElementById("supName").value;
+          const phone = document.getElementById("supPhone").value;
+          const fd = new FormData();
+          fd.append("name", name);
+          if (phone) fd.append("phone", phone);
+          const res = await fetch("/api/quick-add-supplier", { method: "POST", body: fd });
+          if (res.ok) {
+            const newSupplier = await res.json();
+            const opt = document.createElement("option");
+            opt.value = newSupplier.id;
+            opt.textContent = newSupplier.name;
+            if (supplierSelect) supplierSelect.appendChild(opt);
+            if (supplierSelect) supplierSelect.value = newSupplier.id;
+            hideModal(supplierModal);
+            supplierForm.reset();
+            if (window.showToast) window.showToast("Supplier created!");
+            else alert("Supplier created!");
+          } else {
+            const err = await res.text();
+            if (window.showToast) window.showToast(err, "error");
+            else alert(err);
+          }
+        });
+      }
+
+      // Open modals
+      if (quickProductBtn) quickProductBtn.addEventListener("click", () => showModal(productModal));
+      if (closeProductModal) closeProductModal.addEventListener("click", () => hideModal(productModal));
+      if (quickSupplierBtn) quickSupplierBtn.addEventListener("click", () => showModal(supplierModal));
+      if (closeSupplierModal) closeSupplierModal.addEventListener("click", () => hideModal(supplierModal));
+
+      // Fetch product units when product is selected
+      async function loadProductUnits(productId) {
+        if (!productId) return;
+        const res = await fetch(`/api/product-unit?id=${productId}`);
+        if (res.ok) {
+          const data = await res.json();
+          currentUnit = data.unit || "piece";
+          currentBulkUnit = data.bulkUnit;
+          currentBulkFactor = data.bulkFactor || 1;
+          unitSelect.innerHTML = `<option value="base">${currentUnit}</option>`;
+          if (currentBulkUnit) {
+            unitSelect.innerHTML += `<option value="bulk">${currentBulkUnit}</option>`;
+          }
+        } else {
+          unitSelect.innerHTML = `<option value="base">piece</option>`;
+        }
+      }
+
+      productSelect.addEventListener("change", () => {
+        const productId = productSelect.value;
+        if (productId) loadProductUnits(productId);
+        else unitSelect.innerHTML = `<option value="base">piece</option>`;
+      });
+
+      // Barcode lookup
       async function lookupProductByCode(code) {
-        const res = await fetch(
-          `/api/product-by-barcode?code=${encodeURIComponent(code)}`,
-        );
+        const res = await fetch(`/api/product-by-barcode?code=${encodeURIComponent(code)}`);
         if (res.ok) {
           const product = await res.json();
-          // Find and set the product select option
-          const productSelect = document.getElementById("productSelect");
-          const option = Array.from(productSelect.options).find(
-            (opt) => opt.value == product.id,
-          );
-          if (option) {
-            productSelect.value = product.id;
-            productSelect.dispatchEvent(new Event("change"));
-            barcodeInput.value = "";
-            if (window.showToast)
-              window.showToast(`Product ${product.name} selected`, "success");
-          } else {
-            window.showToast("Product not active?", "error");
-          }
+          productSelect.value = product.id;
+          productSelect.dispatchEvent(new Event("change"));
+          barcodeInput.value = "";
+          if (window.showToast) window.showToast(`Product ${product.name} selected`, "success");
         } else {
           window.showToast("Product not found", "error");
         }
@@ -411,44 +437,54 @@ const categories = rawDb
         });
       }
 
-      if (supplierForm) {
-        supplierForm.addEventListener("submit", async (e) => {
-          e.preventDefault();
-          const name = document.getElementById("supName").value;
-          const phone = document.getElementById("supPhone").value;
-          const fd = new FormData();
-          fd.append("name", name);
-          if (phone) fd.append("phone", phone);
-          const res = await fetch("/api/quick-add-supplier", {
-            method: "POST",
-            body: fd,
-          });
-          if (res.ok) {
-            const newSupplier = await res.json();
-            const opt = document.createElement("option");
-            opt.value = newSupplier.id;
-            opt.textContent = newSupplier.name;
-            if (supplierSelect) supplierSelect.appendChild(opt);
-            if (supplierSelect) supplierSelect.value = newSupplier.id;
-            hideModal(supplierModal);
-            supplierForm.reset();
-            if (window.showToast) window.showToast("Supplier created!");
-            else alert("Supplier created!");
-          } else {
-            const err = await res.text();
-            if (window.showToast) window.showToast(err, "error");
-            else alert(err);
+      // Toggle fields for cost correction
+      function toggleCostCorrectionFields() {
+        const isCostCorrection = movementType.value === "cost_correction";
+        if (isCostCorrection) {
+          quantityInput.style.display = "none";
+          unitSelect.style.display = "none";
+          totalCostInput.style.display = "none";
+          newCostInput.style.display = "block";
+          quantityInput.required = false;
+          totalCostInput.required = false;
+          newCostInput.required = true;
+        } else {
+          quantityInput.style.display = "block";
+          unitSelect.style.display = "block";
+          totalCostInput.style.display = "block";
+          newCostInput.style.display = "none";
+          quantityInput.required = true;
+          totalCostInput.required = false;
+          newCostInput.required = false;
+        }
+      }
+      if (movementType) {
+        movementType.addEventListener("change", toggleCostCorrectionFields);
+        toggleCostCorrectionFields();
+      }
+
+      // Convert quantity to base unit on submit
+      const movementForm = document.getElementById("movementForm");
+      if (movementForm) {
+        movementForm.addEventListener("submit", (e) => {
+          const selectedUnit = unitSelect.value;
+          let rawQuantity = parseFloat(quantityInput.value);
+          if (isNaN(rawQuantity)) rawQuantity = 0;
+          let baseQuantity = rawQuantity;
+          if (selectedUnit === "bulk" && currentBulkUnit && currentBulkFactor > 0) {
+            baseQuantity = rawQuantity * currentBulkFactor;
           }
+          quantityInput.value = baseQuantity;
         });
       }
 
+      // Close modals when clicking outside
       window.addEventListener("click", (e) => {
         if (e.target === productModal) hideModal(productModal);
         if (e.target === supplierModal) hideModal(supplierModal);
       });
 
-      if (refreshBtn)
-        refreshBtn.addEventListener("click", () => window.location.reload());
+      if (refreshBtn) refreshBtn.addEventListener("click", () => window.location.reload());
     });
   </script>
   <BarcodeScanner />
