@@ -5,7 +5,7 @@ import { rawDb } from '../../db';
 export const GET: APIRoute = async () => {
   try {
     const totalProducts = rawDb.prepare('SELECT COUNT(*) as count FROM products WHERE active = 1').get() as { count: number };
-    const lowStockCount = rawDb.prepare('SELECT COUNT(*) as count FROM products WHERE active = 1 AND stock < 5').get() as { count: number };
+    const lowStockCount = rawDb.prepare('SELECT COUNT(*) as count FROM products WHERE active = 1 AND stock < min_stock').get() as { count: number };
     
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);

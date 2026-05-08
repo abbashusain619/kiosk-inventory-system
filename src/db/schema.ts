@@ -6,6 +6,7 @@ export const products = sqliteTable('products', {
   name: text('name').notNull(),
   price: real('price').notNull(), // selling price
   stock: real('stock').notNull().default(0), // current quantity
+  minStock: integer('min_stock').default(5), //low stock alert
   unit: text('unit').default('piece'),
   imageUrl: text('image_url'),
   active: integer('active', { mode: 'boolean' }).default(true),

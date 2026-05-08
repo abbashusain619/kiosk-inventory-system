@@ -11,6 +11,7 @@ const postHandler: APIRoute = async ({ request, redirect }) => {
     price: Number(formData.get('price')),
     cost_price: formData.get('costPrice') ? Number(formData.get('costPrice')) : null,
     stock: Number(formData.get('stock')),
+    min_stock: formData.get('minStock') ? Number(formData.get('minStock')) : 5,
     unit: formData.get('unit')?.toString() || 'piece',
     category_id: formData.get('categoryId') ? Number(formData.get('categoryId')) : null,
     supplier_id: formData.get('supplierId') ? Number(formData.get('supplierId')) : null,

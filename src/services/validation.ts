@@ -7,6 +7,7 @@ export const ProductSchema = z.object({
   price: z.number().positive(),
   cost_price: z.number().nonnegative().nullable().optional(),
   stock: z.number().nonnegative().default(0),
+  min_stock: z.number().nonnegative().default(5),
   unit: z.string().default('piece'),
   category_id: z.number().int().positive().nullable().optional(),
   supplier_id: z.number().int().positive().nullable().optional(),
