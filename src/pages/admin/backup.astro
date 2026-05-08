@@ -1,0 +1,29 @@
+---
+export const prerender = false;
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import Toast from '../../components/Toast.astro';
+
+const { permissions } = Astro.locals;
+if (!permissions?.includes('backup.download')) {
+  return Astro.redirect('/admin/dashboard');
+}
+---
+
+<AdminLayout>
+  <div class="max-w-2xl mx-auto">
+    <h1 class="text-2xl font-bold mb-4">Backup & Recovery</h1>
+    <div class="bg-white p-6 rounded shadow">
+      <p class="mb-4">Download a copy of the entire database. Keep it safe; you can restore it later if needed.</p>
+      <button id="downloadBtn" class="bg-blue-600 text-white px-4 py-2 rounded">Download Database Backup</button>
+    </div>
+  </div>
+
+  <script>
+    const downloadBtn = document.getElementById('downloadBtn');
+    if (downloadBtn) {
+      downloadBtn.addEventListener('click', () => {
+        window.location.href = '/api/backup-db';
+      });
+    }
+  </script>
+</AdminLayout>
