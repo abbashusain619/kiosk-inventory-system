@@ -1,8 +1,16 @@
 export const prerender = false;
 import type { APIRoute } from 'astro';
 import { rawDb } from '../../db';
+import { UnauthorizedError, ValidationError } from '../../lib/errors';
 
-export const GET: APIRoute = async ({ url }) => {
+export const GET: APIRoute = async ({ url, cookies, locals }) => {
+  const sessionId = cookies.get('session')?.value;
+  if (!sessionId) throw new UnauthorizedError();
+
+  if (!locals.permissions?.includes('sales.view')) {
+    throw new ValidationError('You do not have permission to view sales history');
+  }
+
   const from = url.searchParams.get('from');
   const to = url.searchParams.get('to');
 
@@ -21,12 +29,10 @@ export const GET: APIRoute = async ({ url }) => {
     const now = new Date();
     const start = new Date();
     start.setDate(now.getDate() - 30);
-    start.setHours(0,0,0,0);
+    start.setHours(0, 0, 0, 0);
     fromTimestamp = start.getTime();
     toTimestamp = now.getTime();
   }
-
-  console.log('Filtering sales from', new Date(fromTimestamp).toISOString(), 'to', new Date(toTimestamp).toISOString());
 
   const sales = rawDb.prepare(`
     SELECT 

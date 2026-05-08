@@ -8,11 +8,17 @@ import { ValidationError, UnauthorizedError, NotFoundError } from '../../lib/err
 const postHandler: APIRoute = async ({ request, cookies, redirect, locals }) => {
   const sessionId = cookies.get('session')?.value;
   if (!sessionId) throw new UnauthorizedError();
-  const userId = locals.userId || 1;
+  const userId = locals.user?.id || 1;
+
+  // Permission check
+  if (!locals.permissions?.includes('sales.create')) {
+    throw new ValidationError('You do not have permission to create sales');
+  }
 
   const formData = await request.formData();
   const productId = Number(formData.get('productId'));
   const quantity = Number(formData.get('quantity'));
+  const usePromo = formData.get('usePromo') === '1';
 
   if (isNaN(productId) || isNaN(quantity) || quantity <= 0) {
     throw new ValidationError('Invalid product ID or quantity');
@@ -24,8 +30,8 @@ const postHandler: APIRoute = async ({ request, cookies, redirect, locals }) => 
     throw new ValidationError(`Insufficient stock. Only ${product.stock} available.`);
   }
 
-  // Determine selling price (use promo price if active and lower)
-  const finalPrice = (product.on_promotion && product.promo_price && product.promo_price < product.price)
+  // Determine selling price (use promo price if enabled and lower)
+  const finalPrice = (usePromo && product.on_promotion && product.promo_price && product.promo_price < product.price)
     ? product.promo_price
     : product.price;
   const totalAmount = finalPrice * quantity;
@@ -46,7 +52,7 @@ const postHandler: APIRoute = async ({ request, cookies, redirect, locals }) => 
   const saleItemData = {
     basket_id: basketId,
     product_id: productId,
-    quantity: quantity,
+    quantity,
     unit_price: finalPrice,
     total_price: totalAmount,
   };
@@ -56,7 +62,7 @@ const postHandler: APIRoute = async ({ request, cookies, redirect, locals }) => 
   const movementData = {
     product_id: productId,
     type: 'out',
-    quantity: quantity,
+    quantity,
     reason: 'sale',
     total_price: totalAmount,
     created_at: now,
@@ -70,7 +76,6 @@ const postHandler: APIRoute = async ({ request, cookies, redirect, locals }) => 
 
   broadcastEvent({ type: 'stock-update', productId, stock: newStock });
 
-  // Use redirect with success flag (the frontend will show a toast)
   return redirect('/admin/products?sold=1');
 };
 

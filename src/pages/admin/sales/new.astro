@@ -4,6 +4,12 @@ export const prerender = false;
 import AdminLayout from '../../../layouts/AdminLayout.astro';
 import { rawDb } from '../../../db';
 
+
+const { permissions } = Astro.locals;
+if (!permissions?.includes('sales.create')) {
+  return Astro.redirect('/admin/dashboard');
+}
+
 // Fetch all active products for dropdown
 const products = rawDb.prepare('SELECT id, name, price, stock, unit FROM products WHERE active = 1 ORDER BY name').all() as { id: number; name: string; price: number; stock: number; unit: string }[];
 ---

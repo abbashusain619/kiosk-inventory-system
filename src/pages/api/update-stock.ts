@@ -5,9 +5,13 @@ import { save, findById } from '../../services/db';
 import { broadcastEvent } from '../../lib/sse';
 import { ValidationError } from '../../lib/errors';
 
-const postHandler: APIRoute = async ({ request, cookies, redirect }) => {
+const postHandler: APIRoute = async ({ request, cookies, redirect, locals }) => {
   const sessionId = cookies.get('session')?.value;
   if (!sessionId) return redirect('/admin/login');
+
+  if (!locals.permissions?.includes('products.edit')) {
+    throw new ValidationError('You do not have permission to edit products');
+  }
 
   const formData = await request.formData();
   const productId = Number(formData.get('productId'));

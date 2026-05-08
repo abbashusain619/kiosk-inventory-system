@@ -3,8 +3,13 @@ import type { APIRoute } from 'astro';
 import { createApiHandler } from '../../lib/api-utils';
 import { save } from '../../services/db';
 import { broadcastEvent } from '../../lib/sse';
+import { ValidationError } from '../../lib/errors';
 
-const postHandler: APIRoute = async ({ request, redirect }) => {
+const postHandler: APIRoute = async ({ request, redirect, locals }) => {
+  if (!locals.permissions?.includes('products.edit')) {
+    throw new ValidationError('You do not have permission to create products');
+  }
+
   const formData = await request.formData();
   const data = {
     name: formData.get('name')?.toString(),

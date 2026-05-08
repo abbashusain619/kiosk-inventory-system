@@ -1,6 +1,7 @@
 import { sqliteTable, text, integer, real } from 'drizzle-orm/sqlite-core';
 
 // Tables
+// Products
 export const products = sqliteTable('products', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   name: text('name').notNull(),
@@ -17,6 +18,7 @@ export const products = sqliteTable('products', {
   promoPrice: real('promo_price'),
 });
 
+// Categories
 export const categories = sqliteTable('categories', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   name: text('name').unique().notNull(),
@@ -24,6 +26,7 @@ export const categories = sqliteTable('categories', {
   createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
 });
 
+// Suppliers
 export const suppliers = sqliteTable('suppliers', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   name: text('name').notNull(),
@@ -33,6 +36,7 @@ export const suppliers = sqliteTable('suppliers', {
   createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
 });
 
+// Stock Movements
 export const stockMovements = sqliteTable('stock_movements', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   productId: integer('product_id').notNull().references(() => products.id),
@@ -46,6 +50,7 @@ export const stockMovements = sqliteTable('stock_movements', {
   userId: integer('user_id').references(() => adminUser.id), // from admin_user
 });
 
+// Sales Baskets
 export const saleBaskets = sqliteTable('sale_baskets', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   totalAmount: real('total_amount').notNull(),
@@ -58,6 +63,7 @@ export const saleBaskets = sqliteTable('sale_baskets', {
   userId: integer('user_id').references(() => adminUser.id),
 });
 
+// Sale Items
 export const saleItems = sqliteTable('sale_items', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   basketId: integer('basket_id').notNull().references(() => saleBaskets.id),
@@ -74,11 +80,33 @@ export const siteSettings = sqliteTable('site_settings', {
   value: text('value').notNull(),
 });
 
+// ----- Roles -----
+export const roles = sqliteTable('roles', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  name: text('name').notNull().unique(),
+  description: text('description'),
+  created_at: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
+});
+
+// ----- Permissions -----
+export const permissions = sqliteTable('permissions', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  name: text('name').notNull().unique(),
+  description: text('description'),
+});
+
+// ----- Role Permissions -----
+export const rolePermissions = sqliteTable('role_permissions', {
+  role_id: integer('role_id').notNull().references(() => roles.id),
+  permission_id: integer('permission_id').notNull().references(() => permissions.id),
+});
+
 // Admin user and session
 export const adminUser = sqliteTable('admin_user', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   email: text('email').unique().notNull(),
   hashedPassword: text('hashed_password').notNull(),
+  role_id: integer('role_id').notNull().references(() => roles.id).default(1),
 });
 
 export const userSession = sqliteTable('user_session', {

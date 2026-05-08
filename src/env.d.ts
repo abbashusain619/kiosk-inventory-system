@@ -2,7 +2,13 @@
 
 declare namespace App {
   interface Locals {
-    userId?: number;
+    user?: {
+      id: number;
+      email: string;
+      roleId: number;
+      roleName: string;
+    };
+    permissions?: string[];
   }
 }
 interface Window {

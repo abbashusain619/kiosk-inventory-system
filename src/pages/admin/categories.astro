@@ -5,6 +5,9 @@ import ConfirmModal from '../../components/ConfirmModal.astro';
 import Toast from '../../components/Toast.astro';
 import { rawDb } from '../../db';
 
+const { permissions } = Astro.locals;
+const canEdit = permissions?.includes('categories.edit') ?? false;
+
 const added = Astro.url.searchParams.has('added');
 const deleted = Astro.url.searchParams.has('deleted');
 const error = Astro.url.searchParams.get('error');
@@ -21,18 +24,22 @@ const categories = rawDb.prepare('SELECT id, name FROM categories ORDER BY name'
     {deleted && <Toast id="deleteToast" message="Category deleted successfully!" type="success" />}
     {error === 'used' && <Toast id="errorToast" message="Cannot delete: category is used by products" type="error" duration={4000} />}
 
-    <!-- Add Category Form -->
-    <form method="post" action="/api/add-category" class="flex gap-2 mb-6">
-      <input type="text" name="name" placeholder="New category name" required class="border p-2 rounded flex-1" />
-      <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded">Add</button>
-    </form>
+    <!-- Add Category Form (only if user has edit permission) -->
+    {canEdit && (
+      <form method="post" action="/api/add-category" class="flex gap-2 mb-6">
+        <input type="text" name="name" placeholder="New category name" required class="border p-2 rounded flex-1" />
+        <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded">Add</button>
+      </form>
+    )}
 
-    <!-- Categories List with Delete Button (uses modal) -->
+    <!-- Categories List (delete button only if can edit) -->
     <ul class="bg-white rounded shadow divide-y">
       {categories.map((cat) => (
         <li class="p-3 flex justify-between items-center" data-category-name={cat.name}>
           <span>{cat.name}</span>
-          <button type="button" class="delete-category-btn text-red-600" data-id={cat.id} data-name={cat.name}>Delete</button>
+          {canEdit && (
+            <button type="button" class="delete-category-btn text-red-600" data-id={cat.id} data-name={cat.name}>Delete</button>
+          )}
         </li>
       ))}
     </ul>
@@ -41,7 +48,7 @@ const categories = rawDb.prepare('SELECT id, name FROM categories ORDER BY name'
   <ConfirmModal />
 
   <script lang="js">
-    // Handle delete with modal
+    // Handle delete with modal (only if buttons exist)
     document.querySelectorAll('.delete-category-btn').forEach(btn => {
       btn.addEventListener('click', async (e) => {
         const id = btn.getAttribute('data-id');

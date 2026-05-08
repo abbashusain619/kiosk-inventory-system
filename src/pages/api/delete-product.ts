@@ -1,18 +1,20 @@
 export const prerender = false;
 import type { APIRoute } from 'astro';
-import { db } from '../../db';
-import { products } from '../../db/schema';
-import { eq } from 'drizzle-orm';
+import { createApiHandler } from '../../lib/api-utils';
+import { deleteRecord } from '../../services/db';
 import { broadcastEvent } from '../../lib/sse';
+import { ValidationError } from '../../lib/errors';
 
-export const POST: APIRoute = async ({ request, redirect }) => {
+const postHandler: APIRoute = async ({ request, redirect, locals }) => {
+  if (!locals.permissions?.includes('products.edit')) {
+    throw new ValidationError('You do not have permission to delete products');
+  }
+
   const formData = await request.formData();
   const id = Number(formData.get('id'));
-  
-  // Soft delete: set active to false
-  await db.update(products).set({ active: false }).where(eq(products.id, id));
-  
+  await deleteRecord('products', id);
   broadcastEvent({ type: 'product-deleted', productId: id });
-  
   return redirect('/admin/products');
 };
+
+export const POST = createApiHandler(postHandler);

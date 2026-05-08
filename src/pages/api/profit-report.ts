@@ -1,6 +1,7 @@
 export const prerender = false;
 import type { APIRoute } from 'astro';
 import { rawDb } from '../../db';
+import { ValidationError } from '../../lib/errors';
 
 type ProfitRow = {
   id: number;
@@ -17,7 +18,12 @@ type Summary = {
   totalProfit: number;
 };
 
-export const GET: APIRoute = async ({ url }) => {
+export const GET: APIRoute = async ({ url, locals }) => {
+    // Permission check
+  if (!locals.permissions?.includes('reports.profit')) {
+    throw new ValidationError('You do not have permission to view profit report');
+  }
+
   const from = url.searchParams.get('from');
   const to = url.searchParams.get('to');
 

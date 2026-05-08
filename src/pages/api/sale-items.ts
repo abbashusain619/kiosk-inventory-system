@@ -1,8 +1,16 @@
 export const prerender = false;
 import type { APIRoute } from 'astro';
 import { rawDb } from '../../db';
+import { UnauthorizedError, ValidationError } from '../../lib/errors';
 
-export const GET: APIRoute = async ({ url }) => {
+export const GET: APIRoute = async ({ url, cookies, locals }) => {
+  const sessionId = cookies.get('session')?.value;
+  if (!sessionId) throw new UnauthorizedError();
+
+  if (!locals.permissions?.includes('sales.view')) {
+    throw new ValidationError('You do not have permission to view sale details');
+  }
+
   const basketId = url.searchParams.get('basketId');
   if (!basketId) return new Response('Missing basketId', { status: 400 });
 

@@ -1,9 +1,12 @@
 ---
 import Layout from './Layout.astro';
-const { userId } = Astro.locals;
-if (!userId) {
+const { user, permissions } = Astro.locals;
+if (!user) {
   return Astro.redirect('/admin/login');
 }
+const canManageUsers = permissions?.includes('users.manage') ?? false;
+
+const canManageRoles = permissions?.includes('roles.manage') ?? false;
 ---
 
 <Layout>
@@ -17,6 +20,8 @@ if (!userId) {
     <a href="/admin/suppliers" class="hover:underline">Suppliers</a>
     <a href="/admin/sales/new" class="hover:underline">New Sale</a>
     <a href="/admin/settings" class="hover:underline">Settings</a>
+    {canManageUsers && <a href="/admin/users" class="hover:underline">Users</a>}
+    {canManageRoles && <a href="/admin/roles" class="hover:underline">Roles</a>}
     <form method="post" action="/api/logout" class="ml-auto">
       <button type="submit" class="hover:underline">Logout</button>
     </form>

@@ -8,7 +8,10 @@ import { db } from '../../db';
 import { categories } from '../../db/schema';
 import { eq } from 'drizzle-orm';
 
-const postHandler: APIRoute = async ({ request }) => {
+const postHandler: APIRoute = async ({ request, locals }) => {
+    if (!locals.permissions?.includes('products.edit')) {
+    throw new ValidationError('You do not have permission to add products');
+  }
   const formData = await request.formData();
   const name = formData.get('name')?.toString();
   const price = parseFloat(formData.get('price') as string);

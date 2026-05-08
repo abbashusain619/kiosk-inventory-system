@@ -1,8 +1,12 @@
 export const prerender = false;
 import type { APIRoute } from 'astro';
 import { rawDb } from '../../db';
+import { UnauthorizedError } from '../../lib/errors';
 
-export const GET: APIRoute = async () => {
+export const GET: APIRoute = async ({ cookies }) => {
+  const sessionId = cookies.get('session')?.value;
+  if (!sessionId) throw new UnauthorizedError();
+
   try {
     const totalProducts = rawDb.prepare('SELECT COUNT(*) as count FROM products WHERE active = 1').get() as { count: number };
     const lowStockCount = rawDb.prepare('SELECT COUNT(*) as count FROM products WHERE active = 1 AND stock < min_stock').get() as { count: number };
@@ -12,7 +16,6 @@ export const GET: APIRoute = async () => {
     const todayEnd = new Date();
     todayEnd.setHours(23, 59, 59, 999);
     
-    // Use single quotes around 'completed'
     const todaySales = rawDb.prepare("SELECT COALESCE(SUM(final_amount), 0) as total FROM sale_baskets WHERE status = 'completed' AND completed_at BETWEEN ? AND ?")
       .get(todayStart.getTime(), todayEnd.getTime()) as { total: number };
     

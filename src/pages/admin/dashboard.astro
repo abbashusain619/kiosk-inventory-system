@@ -96,15 +96,15 @@ const settings = Object.fromEntries(settingsRows.map(s => [s.key, s.value]));
         const movementsTbody = document.getElementById('recent-movements-tbody');
         if (movementsTbody) {
           if (movements.length === 0) {
-            movementsTbody.innerHTML = '<tr><td colspan="4" class="p-2 text-center">No movements yet</td></tr>';
+            movementsTbody.innerHTML = '<tr><td colspan="4" class="p-2 text-center">No movements yet<\/td><\/tr>';
           } else {
             movementsTbody.innerHTML = movements.map(m => `
               <tr class="border-t">
-                <td class="p-2">${escapeHtml(m.product_name)}</td>
-                <td class="p-2">${m.type}</td>
-                <td class="p-2">${m.quantity}</td>
-                <td class="p-2">${new Date(m.created_at).toLocaleDateString()}</td>
-              </tr>
+                <td class="p-2">${escapeHtml(m.product_name)}<\/td>
+                <td class="p-2">${m.type}<\/td>
+                <td class="p-2">${m.quantity}<\/td>
+                <td class="p-2">${new Date(m.created_at).toLocaleDateString()}<\/td>
+              <\/tr>
             `).join('');
           }
         }
@@ -114,15 +114,15 @@ const settings = Object.fromEntries(settingsRows.map(s => [s.key, s.value]));
         const salesTbody = document.getElementById('recent-sales-tbody');
         if (salesTbody) {
           if (sales.length === 0) {
-            salesTbody.innerHTML = '<tr><td colspan="4" class="p-2 text-center">No sales yet</td></tr>';
+            salesTbody.innerHTML = '<tr><td colspan="4" class="p-2 text-center">No sales yet<\/td><\/tr>';
           } else {
             salesTbody.innerHTML = sales.map(s => `
               <tr class="border-t">
-                <td class="p-2">${s.id}</td>
-                <td class="p-2">${s.item_count}</td>
-                <td class="p-2">Tsh ${s.final_amount}</td>
-                <td class="p-2">${new Date(s.completed_at).toLocaleDateString()}</td>
-              </tr>
+                <td class="p-2">${s.id}<\/td>
+                <td class="p-2">${s.item_count}<\/td>
+                <td class="p-2">Tsh ${s.final_amount}<\/td>
+                <td class="p-2">${new Date(s.completed_at).toLocaleDateString()}<\/td>
+              <\/tr>
             `).join('');
           }
         }
@@ -141,7 +141,6 @@ const settings = Object.fromEntries(settingsRows.map(s => [s.key, s.value]));
     updateDashboardStats();
     loadRecentData();
 
-    // Listen to global SSE events (dispatched from Layout.astro)
     window.addEventListener('sse:stock-update', () => {
       updateDashboardStats();
       loadRecentData();

@@ -1,8 +1,12 @@
 export const prerender = false;
 import type { APIRoute } from 'astro';
 import { rawDb } from '../../db';
+import { ValidationError } from '../../lib/errors';
 
-export const POST: APIRoute = async ({ request, redirect }) => {
+export const POST: APIRoute = async ({ request, redirect, locals }) => {
+  if (!locals.permissions?.includes('settings.edit')) {
+    throw new ValidationError('You do not have permission to edit settings');
+  }
   const formData = await request.formData();
   const settings = {
     businessName: formData.get('businessName')?.toString() || '',
