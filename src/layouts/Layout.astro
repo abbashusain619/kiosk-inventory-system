@@ -1,45 +1,64 @@
 ---
-import '../styles/global.css';
+import "../styles/global.css";
 ---
 
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Kiosk Live</title>
+    <link rel="stylesheet" href="/src/styles/global.css" />
+    <!-- Inter Font -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap"
+      rel="stylesheet"
+    />
   </head>
   <body>
     <slot />
-    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"
+      defer>
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script>
-        // Global SSE listener - single connection for all tabs/pages
-        // Note: each browser tab will have its own connection, but that's normal.
-        // We only want one per page, not one per component.
-        const sse = new EventSource('/api/sse');
-        sse.onmessage = (event) => {
-            try {
-            const data = JSON.parse(event.data);
-            // Dispatch a custom event that any page can listen to
-            window.dispatchEvent(new CustomEvent(`sse:${data.type}`, { detail: data }));
-            } catch (err) {
-            console.error('SSE parse error', err);
-            }
-        };
-        sse.onerror = () => {
-            console.log('SSE connection lost, will reconnect...');
-            // EventSource will automatically reconnect
-        };
-        window.showToast = (message, type = 'success') => {
+      // Load dark mode preference
+      const savedTheme = localStorage.getItem("theme");
+      if (savedTheme === "dark") {
+        document.documentElement.classList.add("dark");
+      }
+    </script>
+    <script>
+      // Global SSE listener - single connection for all tabs/pages
+      // Note: each browser tab will have its own connection, but that's normal.
+      // We only want one per page, not one per component.
+      const sse = new EventSource("/api/sse");
+      sse.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          // Dispatch a custom event that any page can listen to
+          window.dispatchEvent(
+            new CustomEvent(`sse:${data.type}`, { detail: data }),
+          );
+        } catch (err) {
+          console.error("SSE parse error", err);
+        }
+      };
+      sse.onerror = () => {
+        console.log("SSE connection lost, will reconnect...");
+        // EventSource will automatically reconnect
+      };
+      window.showToast = (message, type = "success") => {
         const id = `toast-${Date.now()}`;
-        const toast = document.createElement('div');
+        const toast = document.createElement("div");
         toast.id = id;
-        const bgColor = type === 'success' ? 'bg-green-600' : 'bg-red-600';
+        const bgColor = type === "success" ? "bg-green-600" : "bg-red-600";
         toast.className = `fixed top-4 right-4 z-50 px-4 py-2 rounded shadow text-white ${bgColor}`;
         toast.innerText = message;
         document.body.appendChild(toast);
         setTimeout(() => toast.remove(), 3000);
-        };
+      };
     </script>
   </body>
 </html>

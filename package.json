@@ -12,19 +12,22 @@
     "astro": "astro"
   },
   "dependencies": {
-    "@tailwindcss/vite": "^4.2.4",
+    "@astrojs/node": "^10.1.0",
     "astro": "^6.3.1",
     "bcryptjs": "^3.0.3",
     "better-sqlite3": "^12.9.0",
+    "chart.js": "^4.5.1",
     "cookie": "^1.1.1",
     "drizzle-orm": "^0.45.2",
     "html5-qrcode": "^2.3.8",
-    "tailwindcss": "^4.2.4",
     "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
     "@types/better-sqlite3": "^7.6.13",
-    "drizzle-kit": "^0.31.10"
+    "autoprefixer": "^10.5.0",
+    "drizzle-kit": "^0.31.10",
+    "postcss": "^8.5.14",
+    "tailwindcss": "^3.4.19"
   }
 }

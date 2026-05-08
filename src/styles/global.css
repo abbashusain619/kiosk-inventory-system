@@ -1,1 +1,38 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@media (max-width: 640px) {
+  table, thead, tbody, th, td, tr {
+    display: block;
+  }
+  thead {
+    display: none;
+  }
+  tr {
+    border: 1px solid #e5e5e5;
+    border-radius: 0.5rem;
+    margin-bottom: 1rem;
+    background-color: white;
+    padding: 0.5rem;
+  }
+  .dark tr {
+    background-color: #1a1a1a;
+    border-color: #2a2a2a;
+  }
+  td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  .dark td {
+    border-bottom-color: #2a2a2a;
+  }
+  td:before {
+    content: attr(data-label);
+    font-weight: 600;
+    width: 40%;
+  }
+}

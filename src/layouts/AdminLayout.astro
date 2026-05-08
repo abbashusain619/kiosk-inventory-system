@@ -1,52 +1,35 @@
 ---
 import Layout from './Layout.astro';
-const { user, permissions, t, lang } = Astro.locals;
-if (!user) {
-  return Astro.redirect('/admin/login');
-}
-const canManageUsers = permissions?.includes('users.manage') ?? false;
-const canManageRoles = permissions?.includes('roles.manage') ?? false;
-const canBackup = permissions?.includes('backup.download') ?? false;
-const canViewAudit = permissions?.includes('audit.view') ?? false;
+import Sidebar from '../components/Sidebar.astro';
+import TopBar from '../components/TopBar.astro';
+
+const { user, t } = Astro.locals;
+if (!user) return Astro.redirect('/admin/login');
+// Determine the page title from the request URL (simple mapping)
+let pageTitle = 'Dashboard';
+const path = Astro.url.pathname;
+if (path.includes('/products')) pageTitle = t('products');
+else if (path.includes('/transactions')) pageTitle = t('transactions');
+else if (path.includes('/categories')) pageTitle = t('categories');
+else if (path.includes('/suppliers')) pageTitle = t('suppliers');
+else if (path.includes('/sales/new')) pageTitle = t('new_sale');
+else if (path.includes('/settings')) pageTitle = t('settings');
+else if (path.includes('/users')) pageTitle = t('users');
+else if (path.includes('/roles')) pageTitle = t('roles');
+else if (path.includes('/audit')) pageTitle = t('audit_logs');
+else if (path.includes('/backup')) pageTitle = t('backup');
+else if (path.includes('/reports/profit')) pageTitle = t('profit_report');
+else if (path.includes('/reports/sales')) pageTitle = t('sales_history');
 ---
 
 <Layout>
-  <nav class="bg-gray-800 text-white p-4 flex gap-4 flex-wrap items-center">
-    <a href="/admin/dashboard" class="hover:underline">{t('dashboard')}</a>
-    <a href="/admin/reports/profit" class="hover:underline">{t('profit_report')}</a>
-    <a href="/admin/reports/sales" class="hover:underline">{t('sales_history')}</a>
-    <a href="/admin/products" class="hover:underline">{t('products')}</a>
-    <a href="/admin/transactions" class="hover:underline">{t('transactions')}</a>
-    <a href="/admin/categories" class="hover:underline">{t('categories')}</a>
-    <a href="/admin/suppliers" class="hover:underline">{t('suppliers')}</a>
-    <a href="/admin/sales/new" class="hover:underline">{t('new_sale')}</a>
-    <a href="/admin/settings" class="hover:underline">{t('settings')}</a>
-    {canManageUsers && <a href="/admin/users" class="hover:underline">{t('users')}</a>}
-    {canManageRoles && <a href="/admin/roles" class="hover:underline">{t('roles')}</a>}
-    {canViewAudit && <a href="/admin/audit" class="hover:underline">{t('audit_logs')}</a>}
-    {canBackup && <a href="/admin/backup" class="hover:underline">{t('backup')}</a>}
-    
-    <div class="ml-auto flex gap-2 items-center">
-      <select id="langSelect" class="bg-gray-700 text-white border border-gray-600 rounded p-1 text-sm">
-        <option value="en" selected={lang === 'en'}>English</option>
-        <option value="sw" selected={lang === 'sw'}>Kiswahili</option>
-      </select>
-      <form method="post" action="/api/logout">
-        <button type="submit" class="hover:underline">{t('logout')}</button>
-      </form>
+  <div class="flex min-h-screen bg-ash-50 dark:bg-ash-900">
+    <Sidebar />
+    <div class="flex-1 md:ml-64">
+      <TopBar title={pageTitle} />
+      <main class="p-4 md:p-6">
+        <slot />
+      </main>
     </div>
-  </nav>
-  <main class="p-4">
-    <slot />
-  </main>
-  <script>
-    const langSelect = document.getElementById('langSelect');
-    if (langSelect) {
-      langSelect.addEventListener('change', (e) => {
-        const target = e.target as HTMLSelectElement;
-        document.cookie = `lang=${target.value}; path=/; max-age=31536000`;
-        window.location.reload();
-      });
-    }
-  </script>
+  </div>
 </Layout>

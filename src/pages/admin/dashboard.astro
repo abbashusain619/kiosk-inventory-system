@@ -8,69 +8,98 @@ const settings = Object.fromEntries(settingsRows.map(s => [s.key, s.value]));
 ---
 
 <AdminLayout>
-  <div class="space-y-6">
-    <h1 class="text-2xl font-bold">Dashboard</h1>
+  <div class="space-y-6 w-full overflow-x-hidden">
+    <h1 class="text-2xl font-bold text-ash-800 dark:text-white">Dashboard</h1>
 
     <!-- Stats Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-      <div class="bg-white p-4 rounded shadow">
-        <div class="text-gray-500 text-sm">Total Products</div>
-        <div class="text-2xl font-bold" id="stat-total">0</div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="bg-white dark:bg-ash-800 rounded-xl shadow-sm p-4 border border-ash-200 dark:border-ash-700">
+        <div class="text-ash-500 dark:text-ash-400 text-sm font-medium">Total Products</div>
+        <div class="text-3xl font-bold text-ash-800 dark:text-white mt-1" id="stat-total">0</div>
       </div>
-      <div class="bg-white p-4 rounded shadow">
-        <div class="text-gray-500 text-sm">Low Stock</div>
-        <div class="text-2xl font-bold text-orange-600" id="stat-low">0</div>
+      <div class="bg-white dark:bg-ash-800 rounded-xl shadow-sm p-4 border border-ash-200 dark:border-ash-700">
+        <div class="text-ash-500 dark:text-ash-400 text-sm font-medium">Low Stock</div>
+        <div class="text-3xl font-bold text-orange-600 dark:text-orange-400 mt-1" id="stat-low">0</div>
       </div>
-      <div class="bg-white p-4 rounded shadow">
-        <div class="text-gray-500 text-sm">Today's Sales</div>
-        <div class="text-2xl font-bold text-green-600" id="stat-sales">Tsh 0</div>
+      <div class="bg-white dark:bg-ash-800 rounded-xl shadow-sm p-4 border border-ash-200 dark:border-ash-700">
+        <div class="text-ash-500 dark:text-ash-400 text-sm font-medium">Today's Sales</div>
+        <div class="text-3xl font-bold text-green-600 dark:text-green-400 mt-1" id="stat-sales">Tsh 0</div>
       </div>
-      <div class="bg-white p-4 rounded shadow">
-        <div class="text-gray-500 text-sm">Inventory Value</div>
-        <div class="text-2xl font-bold" id="stat-value">Tsh 0</div>
+      <div class="bg-white dark:bg-ash-800 rounded-xl shadow-sm p-4 border border-ash-200 dark:border-ash-700">
+        <div class="text-ash-500 dark:text-ash-400 text-sm font-medium">Inventory Value</div>
+        <div class="text-3xl font-bold text-ash-800 dark:text-white mt-1" id="stat-value">Tsh 0</div>
+      </div>
+    </div>
+
+    <!-- 4 Charts -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="bg-white dark:bg-ash-800 rounded-xl shadow-sm border border-ash-200 dark:border-ash-700 p-4">
+        <h2 class="text-lg font-semibold text-ash-800 dark:text-white mb-2">Last 7 Days Sales (Tsh)</h2>
+        <canvas id="salesChart" class="w-full max-h-64"></canvas>
+      </div>
+      <div class="bg-white dark:bg-ash-800 rounded-xl shadow-sm border border-ash-200 dark:border-ash-700 p-4">
+        <h2 class="text-lg font-semibold text-ash-800 dark:text-white mb-2">Top 5 Selling Products</h2>
+        <canvas id="topProductsChart" class="w-full max-h-64"></canvas>
+      </div>
+      <div class="bg-white dark:bg-ash-800 rounded-xl shadow-sm border border-ash-200 dark:border-ash-700 p-4">
+        <h2 class="text-lg font-semibold text-ash-800 dark:text-white mb-2">Sales by Category (Last 30 days)</h2>
+        <canvas id="categoryChart" class="w-full max-h-64"></canvas>
+      </div>
+      <div class="bg-white dark:bg-ash-800 rounded-xl shadow-sm border border-ash-200 dark:border-ash-700 p-4">
+        <h2 class="text-lg font-semibold text-ash-800 dark:text-white mb-2">Monthly Sales Trend</h2>
+        <canvas id="monthlySalesChart" class="w-full max-h-64"></canvas>
       </div>
     </div>
 
     <!-- Contact Info Preview -->
-    <div class="bg-white p-4 rounded shadow">
-      <div class="flex justify-between items-center mb-2">
-        <h2 class="text-xl font-semibold">Contact Information</h2>
-        <a href="/admin/settings" class="text-blue-600 text-sm">Edit</a>
+    <div class="bg-white dark:bg-ash-800 rounded-xl shadow-sm border border-ash-200 dark:border-ash-700 p-4">
+      <div class="flex justify-between items-center mb-3">
+        <h2 class="text-lg font-semibold text-ash-800 dark:text-white">Contact Information</h2>
+        <a href="/admin/settings" class="text-primary-600 dark:text-primary-400 text-sm hover:underline">Edit</a>
       </div>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-        <div><span class="font-semibold">Business Name:</span> {settings.businessName || 'Not set'}</div>
-        <div><span class="font-semibold">WhatsApp:</span> {settings.whatsappNumber || 'Not set'}</div>
-        <div><span class="font-semibold">Phone:</span> {settings.phoneNumber || 'Not set'}</div>
-        <div><span class="font-semibold">Location:</span> {settings.locationText || 'Not set'}</div>
-        <div><span class="font-semibold">Hours:</span> {settings.openingHours || 'Not set'}</div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+        <div class="flex flex-wrap gap-1"><span class="font-medium text-ash-700 dark:text-ash-300">Business Name:</span> <span class="text-ash-600 dark:text-ash-400">{settings.businessName || 'Not set'}</span></div>
+        <div class="flex flex-wrap gap-1"><span class="font-medium text-ash-700 dark:text-ash-300">WhatsApp:</span> <span class="text-ash-600 dark:text-ash-400">{settings.whatsappNumber || 'Not set'}</span></div>
+        <div class="flex flex-wrap gap-1"><span class="font-medium text-ash-700 dark:text-ash-300">Phone:</span> <span class="text-ash-600 dark:text-ash-400">{settings.phoneNumber || 'Not set'}</span></div>
+        <div class="flex flex-wrap gap-1"><span class="font-medium text-ash-700 dark:text-ash-300">Location:</span> <span class="text-ash-600 dark:text-ash-400">{settings.locationText || 'Not set'}</span></div>
+        <div class="flex flex-wrap gap-1"><span class="font-medium text-ash-700 dark:text-ash-300">Hours:</span> <span class="text-ash-600 dark:text-ash-400">{settings.openingHours || 'Not set'}</span></div>
       </div>
     </div>
 
-    <!-- Recent Stock Movements & Recent Sales -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <div class="bg-white p-4 rounded shadow">
-        <h2 class="text-xl font-semibold mb-2">Recent Stock Movements</h2>
+    <!-- Two tables side by side -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <!-- Recent Stock Movements -->
+      <div class="bg-white dark:bg-ash-800 rounded-xl shadow-sm border border-ash-200 dark:border-ash-700 p-4">
+        <h2 class="text-lg font-semibold text-ash-800 dark:text-white mb-3">Recent Stock Movements</h2>
         <div class="overflow-x-auto">
           <table class="w-full text-sm">
-            <thead class="bg-gray-100">
-              <tr><th class="p-2">Product</th><th class="p-2">Type</th><th class="p-2">Qty</th><th class="p-2">Date</th></tr>
+            <thead class="bg-ash-50 dark:bg-ash-700 rounded-t-lg">
+              <tr>
+                <th class="p-2 text-left text-ash-700 dark:text-ash-200">Product</th>
+                <th class="p-2 text-left text-ash-700 dark:text-ash-200">Type</th>
+                <th class="p-2 text-left text-ash-700 dark:text-ash-200">Qty</th>
+                <th class="p-2 text-left text-ash-700 dark:text-ash-200">Date</th>
+              </tr>
             </thead>
-            <tbody id="recent-movements-tbody">
-              <tr><td colspan="4" class="p-2 text-center">Loading...</td></tr>
-            </tbody>
+            <tbody id="recent-movements-tbody"><tr><td colspan="4" class="p-2 text-center text-ash-500 dark:text-ash-400">Loading...</td></tr></tbody>
           </table>
         </div>
       </div>
-      <div class="bg-white p-4 rounded shadow">
-        <h2 class="text-xl font-semibold mb-2">Recent Sales</h2>
+
+      <!-- Recent Sales -->
+      <div class="bg-white dark:bg-ash-800 rounded-xl shadow-sm border border-ash-200 dark:border-ash-700 p-4">
+        <h2 class="text-lg font-semibold text-ash-800 dark:text-white mb-3">Recent Sales</h2>
         <div class="overflow-x-auto">
           <table class="w-full text-sm">
-            <thead class="bg-gray-100">
-              <tr><th class="p-2">Sale ID</th><th class="p-2">Items</th><th class="p-2">Total</th><th class="p-2">Date</th></tr>
+            <thead class="bg-ash-50 dark:bg-ash-700 rounded-t-lg">
+              <tr>
+                <th class="p-2 text-left text-ash-700 dark:text-ash-200">Sale ID</th>
+                <th class="p-2 text-left text-ash-700 dark:text-ash-200">Items</th>
+                <th class="p-2 text-left text-ash-700 dark:text-ash-200">Total</th>
+                <th class="p-2 text-left text-ash-700 dark:text-ash-200">Date</th>
+              </tr>
             </thead>
-            <tbody id="recent-sales-tbody">
-              <tr><td colspan="4" class="p-2 text-center">Loading...</td></tr>
-            </tbody>
+            <tbody id="recent-sales-tbody"><tr><td colspan="4" class="p-2 text-center text-ash-500 dark:text-ash-400">Loading...</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -78,6 +107,48 @@ const settings = Object.fromEntries(settingsRows.map(s => [s.key, s.value]));
   </div>
 
   <script lang="js">
+    let charts = [];
+
+    function destroyCharts() {
+      charts.forEach(chart => chart.destroy());
+      charts = [];
+    }
+
+    function loadCharts() {
+      if (typeof Chart === 'undefined') {
+        setTimeout(loadCharts, 200);
+        return;
+      }
+
+      fetch('/api/daily-sales')
+        .then(res => res.json())
+        .then(({ labels, data }) => {
+          const ctx = document.getElementById('salesChart')?.getContext('2d');
+          if (ctx) charts.push(new Chart(ctx, { type: 'line', data: { labels, datasets: [{ label: 'Sales (Tsh)', data, borderColor: '#34d6be', backgroundColor: 'rgba(52,214,190,0.1)', tension: 0.3, fill: true }] }, options: { responsive: true, plugins: { tooltip: { callbacks: { label: (ctx) => `Tsh ${ctx.raw.toFixed(0)}` } } }, scales: { y: { beginAtZero: true, ticks: { callback: (val) => 'Tsh ' + val.toFixed(0) } } } } }));
+        });
+
+      fetch('/api/top-products')
+        .then(res => res.json())
+        .then(data => {
+          const ctx = document.getElementById('topProductsChart')?.getContext('2d');
+          if (ctx) charts.push(new Chart(ctx, { type: 'bar', data: { labels: data.map(p => p.name), datasets: [{ label: 'Quantity Sold', data: data.map(p => p.total_qty), backgroundColor: '#67e933', borderRadius: 6 }] }, options: { responsive: true, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } } }));
+        });
+
+      fetch('/api/sales-by-category')
+        .then(res => res.json())
+        .then(data => {
+          const ctx = document.getElementById('categoryChart')?.getContext('2d');
+          if (ctx) charts.push(new Chart(ctx, { type: 'pie', data: { labels: data.map(c => c.category), datasets: [{ data: data.map(c => c.total), backgroundColor: ['#34d6be', '#67e933', '#ffce56', '#ff6384', '#36a2eb', '#9966ff'] }] }, options: { responsive: true, plugins: { tooltip: { callbacks: { label: (ctx) => `${ctx.label}: Tsh ${ctx.raw.toFixed(0)}` } } } } }));
+        });
+
+      fetch('/api/monthly-sales')
+        .then(res => res.json())
+        .then(({ labels, data }) => {
+          const ctx = document.getElementById('monthlySalesChart')?.getContext('2d');
+          if (ctx) charts.push(new Chart(ctx, { type: 'bar', data: { labels, datasets: [{ label: 'Sales (Tsh)', data, backgroundColor: '#34d6be', borderRadius: 6 }] }, options: { responsive: true, scales: { y: { beginAtZero: true, ticks: { callback: (val) => 'Tsh ' + val.toFixed(0) } } } } }));
+        });
+    }
+
     async function updateDashboardStats() {
       try {
         const res = await fetch('/api/dashboard-stats');
@@ -93,36 +164,35 @@ const settings = Object.fromEntries(settingsRows.map(s => [s.key, s.value]));
       try {
         const movementsRes = await fetch('/api/recent-movements');
         const movements = await movementsRes.json();
-        const movementsTbody = document.getElementById('recent-movements-tbody');
-        if (movementsTbody) {
+        const mTbody = document.getElementById('recent-movements-tbody');
+        if (mTbody) {
           if (movements.length === 0) {
-            movementsTbody.innerHTML = '<tr><td colspan="4" class="p-2 text-center">No movements yet<\/td><\/tr>';
+            mTbody.innerHTML = '<tr><td colspan="4" class="p-2 text-center text-ash-500 dark:text-ash-400">No movements yet</td></tr>';
           } else {
-            movementsTbody.innerHTML = movements.map(m => `
-              <tr class="border-t">
-                <td class="p-2">${escapeHtml(m.product_name)}<\/td>
-                <td class="p-2">${m.type}<\/td>
-                <td class="p-2">${m.quantity}<\/td>
-                <td class="p-2">${new Date(m.created_at).toLocaleDateString()}<\/td>
-              <\/tr>
+            mTbody.innerHTML = movements.map(m => `
+              <tr class="border-t border-ash-200 dark:border-ash-700">
+                <td class="p-2 dark:text-ash-200" data-label="Product">${escapeHtml(m.product_name)}</td>
+                <td class="p-2 dark:text-ash-200" data-label="Type">${m.type}</td>
+                <td class="p-2 dark:text-ash-200" data-label="Qty">${m.quantity}</td>
+                <td class="p-2 dark:text-ash-200" data-label="Date">${new Date(m.created_at).toLocaleDateString()}</td>
+              </tr>
             `).join('');
           }
         }
-
         const salesRes = await fetch('/api/recent-sales');
         const sales = await salesRes.json();
-        const salesTbody = document.getElementById('recent-sales-tbody');
-        if (salesTbody) {
+        const sTbody = document.getElementById('recent-sales-tbody');
+        if (sTbody) {
           if (sales.length === 0) {
-            salesTbody.innerHTML = '<tr><td colspan="4" class="p-2 text-center">No sales yet<\/td><\/tr>';
+            sTbody.innerHTML = '<tr><td colspan="4" class="p-2 text-center text-ash-500 dark:text-ash-400">No sales yet</td></tr>';
           } else {
-            salesTbody.innerHTML = sales.map(s => `
-              <tr class="border-t">
-                <td class="p-2">${s.id}<\/td>
-                <td class="p-2">${s.item_count}<\/td>
-                <td class="p-2">Tsh ${s.final_amount}<\/td>
-                <td class="p-2">${new Date(s.completed_at).toLocaleDateString()}<\/td>
-              <\/tr>
+            sTbody.innerHTML = sales.map(s => `
+              <tr class="border-t border-ash-200 dark:border-ash-700">
+                <td class="p-2 dark:text-ash-200" data-label="Sale ID">${s.id}</td>
+                <td class="p-2 dark:text-ash-200" data-label="Items">${s.item_count}</td>
+                <td class="p-2 dark:text-ash-200" data-label="Total">Tsh ${s.final_amount}</td>
+                <td class="p-2 dark:text-ash-200" data-label="Date">${new Date(s.completed_at).toLocaleDateString()}</td>
+              </tr>
             `).join('');
           }
         }
@@ -130,36 +200,24 @@ const settings = Object.fromEntries(settingsRows.map(s => [s.key, s.value]));
     }
 
     function escapeHtml(str) {
-      return str.replace(/[&<>]/g, function(m) {
-        if (m === '&') return '&amp;';
-        if (m === '<') return '&lt;';
-        if (m === '>') return '&gt;';
-        return m;
-      });
+      return str.replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m]));
     }
 
-    updateDashboardStats();
-    loadRecentData();
+    document.addEventListener('DOMContentLoaded', () => {
+      updateDashboardStats();
+      loadRecentData();
+      loadCharts();
+    });
 
-    window.addEventListener('sse:stock-update', () => {
-      updateDashboardStats();
-      loadRecentData();
-    });
-    window.addEventListener('sse:product-created', () => {
-      updateDashboardStats();
-      loadRecentData();
-    });
-    window.addEventListener('sse:product-deleted', () => {
-      updateDashboardStats();
-      loadRecentData();
-    });
-    window.addEventListener('sse:product-updated', () => {
-      updateDashboardStats();
-      loadRecentData();
-    });
+    window.addEventListener('sse:stock-update', () => { updateDashboardStats(); loadRecentData(); });
+    window.addEventListener('sse:product-created', () => { updateDashboardStats(); loadRecentData(); });
+    window.addEventListener('sse:product-deleted', () => { updateDashboardStats(); loadRecentData(); });
+    window.addEventListener('sse:product-updated', () => { updateDashboardStats(); loadRecentData(); });
     window.addEventListener('sse:sale-completed', () => {
       updateDashboardStats();
       loadRecentData();
+      destroyCharts();
+      loadCharts();
     });
   </script>
 </AdminLayout>

@@ -1,0 +1,52 @@
+---
+const { t, permissions } = Astro.locals;
+const canManageUsers = permissions?.includes('users.manage') ?? false;
+const canManageRoles = permissions?.includes('roles.manage') ?? false;
+const canBackup = permissions?.includes('backup.download') ?? false;
+const canViewAudit = permissions?.includes('audit.view') ?? false;
+const currentPath = Astro.url.pathname;
+const navItems = [
+  { href: '/admin/dashboard', label: t('dashboard'), permission: null },
+  { href: '/admin/reports/profit', label: t('profit_report'), permission: null },
+  { href: '/admin/reports/sales', label: t('sales_history'), permission: null },
+  { href: '/admin/products', label: t('products'), permission: null },
+  { href: '/admin/transactions', label: t('transactions'), permission: null },
+  { href: '/admin/categories', label: t('categories'), permission: null },
+  { href: '/admin/suppliers', label: t('suppliers'), permission: null },
+  { href: '/admin/sales/new', label: t('new_sale'), permission: null },
+  { href: '/admin/settings', label: t('settings'), permission: null },
+  { href: '/admin/users', label: t('users'), permission: 'users.manage', condition: canManageUsers },
+  { href: '/admin/roles', label: t('roles'), permission: 'roles.manage', condition: canManageRoles },
+  { href: '/admin/audit', label: t('audit_logs'), permission: 'audit.view', condition: canViewAudit },
+  { href: '/admin/backup', label: t('backup'), permission: 'backup.download', condition: canBackup },
+];
+const filtered = navItems.filter(item => item.condition !== undefined ? item.condition : true);
+---
+
+<aside class="fixed top-0 left-0 z-40 w-64 h-screen transition-transform -translate-x-full md:translate-x-0 bg-white dark:bg-ash-800 border-r border-ash-200 dark:border-ash-700">
+  <div class="h-full px-3 py-4 overflow-y-auto">
+    <div class="flex items-center justify-between mb-5 md:justify-center">
+      <span class="text-xl font-semibold text-ash-800 dark:text-white">Kiosk Live</span>
+      <button id="closeSidebarBtn" class="md:hidden text-ash-500 dark:text-ash-400">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+      </button>
+    </div>
+    <ul class="space-y-1 font-medium">
+      {filtered.map(item => (
+        <li>
+          <a href={item.href} class={`flex items-center p-2 rounded-lg hover:bg-ash-100 dark:hover:bg-ash-700 group ${currentPath === item.href ? 'bg-primary-50 dark:bg-primary-900 text-primary-700 dark:text-primary-300' : 'text-ash-700 dark:text-ash-200'}`}>
+            <span class="flex-1 ms-3 whitespace-nowrap">{item.label}</span>
+          </a>
+        </li>
+      ))}
+    </ul>
+  </div>
+</aside>
+
+<script>
+  const closeBtn = document.getElementById('closeSidebarBtn');
+  const sidebar = document.querySelector('aside');
+  if (closeBtn && sidebar) {
+    closeBtn.addEventListener('click', () => sidebar.classList.add('-translate-x-full'));
+  }
+</script>
