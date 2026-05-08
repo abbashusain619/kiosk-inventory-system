@@ -1,56 +1,109 @@
 ---
-const success = Astro.url.searchParams.has('success');
+const success = Astro.url.searchParams.has("success");
 export const prerender = false;
-import AdminLayout from '../../../layouts/AdminLayout.astro';
-import { rawDb } from '../../../db';
-
+import AdminLayout from "../../../layouts/AdminLayout.astro";
+import { rawDb } from "../../../db";
+import BarcodeScanner from "../../../components/BarcodeScanner.astro";
 
 const { permissions } = Astro.locals;
-if (!permissions?.includes('sales.create')) {
-  return Astro.redirect('/admin/dashboard');
+if (!permissions?.includes("sales.create")) {
+  return Astro.redirect("/admin/dashboard");
 }
 
 // Fetch all active products for dropdown
-const products = rawDb.prepare('SELECT id, name, price, stock, unit FROM products WHERE active = 1 ORDER BY name').all() as { id: number; name: string; price: number; stock: number; unit: string }[];
+const products = rawDb
+  .prepare(
+    "SELECT id, name, price, stock, unit FROM products WHERE active = 1 ORDER BY name"
+  )
+  .all() as {
+  id: number;
+  name: string;
+  price: number;
+  stock: number;
+  unit: string;
+}[];
 ---
 
 <AdminLayout>
   <div class="max-w-4xl mx-auto">
     <h1 class="text-2xl font-bold mb-4">New Sale (Multi-Product)</h1>
-    
+
     {success && (
-      <div id="toast" class="fixed top-4 right-4 bg-green-600 text-white px-4 py-2 rounded shadow z-50">
+      <div
+        id="toast"
+        class="fixed top-4 right-4 bg-green-600 text-white px-4 py-2 rounded shadow z-50"
+      >
         Sale completed successfully!
       </div>
     )}
 
-    <!-- Product selector -->
+    <!-- Product selector (dropdown + quantity + add) -->
     <div class="bg-white p-4 rounded shadow mb-4">
       <div class="flex gap-2 items-end">
         <div class="flex-1">
           <label class="block font-semibold mb-1">Product</label>
           <select id="productSelect" class="w-full border p-2 rounded">
             <option value="">Select product</option>
-            {products.map(p => (
+            {products.map((p) => (
               <option value={p.id} data-price={p.price} data-stock={p.stock}>
-                {p.name} - Tsh {p.price} (stock: {p.stock} {p.unit || 'piece'})
+                {p.name} - Tsh {p.price} (stock: {p.stock} {p.unit || "piece"})
               </option>
             ))}
           </select>
         </div>
         <div class="w-24">
           <label class="block font-semibold mb-1">Qty</label>
-          <input type="number" id="quantity" value="1" min="1" class="border p-2 rounded w-full" />
+          <input
+            type="number"
+            id="quantity"
+            value="1"
+            min="1"
+            class="border p-2 rounded w-full"
+          />
         </div>
-        <button id="addBtn" class="bg-blue-600 text-white px-4 py-2 rounded">Add</button>
+        <button id="addBtn" class="bg-blue-600 text-white px-4 py-2 rounded"
+          >Add</button
+        >
       </div>
+    </div>
+
+    <!-- Manual barcode / SKU input (fallback) + scanner button -->
+    <div class="flex gap-2 items-center mb-4">
+      <div class="flex-1">
+        <label class="block font-semibold mb-1">Or enter SKU / Barcode</label>
+        <input
+          type="text"
+          id="barcodeInput"
+          placeholder="Type SKU or barcode"
+          class="border p-2 rounded w-full"
+        />
+      </div>
+      <button
+        id="addByCodeBtn"
+        class="bg-blue-600 text-white px-4 py-2 rounded"
+        style="margin-top: 1.5rem;"
+        >Add by Code</button
+      >
+      <button
+        type="button"
+        id="scanBarcodeBtn"
+        class="bg-purple-600 text-white px-4 py-2 rounded"
+        style="margin-top: 1.5rem;"
+        >Scan Barcode</button
+      >
     </div>
 
     <!-- Basket table -->
     <div class="bg-white rounded shadow overflow-x-auto">
       <table class="w-full">
         <thead class="bg-gray-100">
-          <tr><th class="p-2 text-left">Product</th><th class="p-2 text-left">Qty</th><th class="p-2 text-left">Unit Price</th><th class="p-2 text-left">Total</th><th class="p-2"></th></tr>
+          <tr>
+            <th class="p-2 text-left">Product</th>
+            <th class="p-2 text-left">Qty</th>
+            <th class="p-2 text-left">Unit Price</th>
+            <th class="p-2 text-left">Total</th>
+            <th class="p-2"></th>
+          </tr>
         </thead>
         <tbody id="basketBody"></tbody>
         <tfoot>
@@ -66,7 +119,13 @@ const products = rawDb.prepare('SELECT id, name, price, stock, unit FROM product
                 <option value="percentage">%</option>
                 <option value="fixed">Tsh</option>
               </select>
-              <input type="number" id="discountValue" value="0" min="0" class="border p-1 w-24 text-sm" />
+              <input
+                type="number"
+                id="discountValue"
+                value="0"
+                min="0"
+                class="border p-1 w-24 text-sm"
+              />
             </td>
             <td></td>
           </tr>
@@ -80,8 +139,14 @@ const products = rawDb.prepare('SELECT id, name, price, stock, unit FROM product
     </div>
 
     <div class="mt-4 flex gap-2">
-      <button id="completeSaleBtn" class="bg-green-600 text-white px-6 py-2 rounded">Complete Sale</button>
-      <a href="/admin/products" class="bg-gray-600 text-white px-4 py-2 rounded">Cancel</a>
+      <button
+        id="completeSaleBtn"
+        class="bg-green-600 text-white px-6 py-2 rounded"
+        >Complete Sale</button
+      >
+      <a href="/admin/products" class="bg-gray-600 text-white px-4 py-2 rounded"
+        >Cancel</a
+      >
     </div>
   </div>
 
@@ -89,31 +154,68 @@ const products = rawDb.prepare('SELECT id, name, price, stock, unit FROM product
     let basket = [];
     const productsData = products;
 
-    const productSelect = document.getElementById('productSelect');
-    const quantityInput = document.getElementById('quantity');
-    const addBtn = document.getElementById('addBtn');
-    const basketBody = document.getElementById('basketBody');
-    const subtotalSpan = document.getElementById('subtotal');
-    const discountType = document.getElementById('discountType');
-    const discountValue = document.getElementById('discountValue');
-    const finalTotalSpan = document.getElementById('finalTotal');
-    const completeBtn = document.getElementById('completeSaleBtn');
+    // DOM elements
+    const productSelect = document.getElementById("productSelect");
+    const quantityInput = document.getElementById("quantity");
+    const addBtn = document.getElementById("addBtn");
+    const basketBody = document.getElementById("basketBody");
+    const subtotalSpan = document.getElementById("subtotal");
+    const discountType = document.getElementById("discountType");
+    const discountValue = document.getElementById("discountValue");
+    const finalTotalSpan = document.getElementById("finalTotal");
+    const completeBtn = document.getElementById("completeSaleBtn");
+    const barcodeInput = document.getElementById("barcodeInput");
+    const addByCodeBtn = document.getElementById("addByCodeBtn");
+    const scanBarcodeBtn = document.getElementById("scanBarcodeBtn");
 
-    // Auto-hide success toast after 3 seconds
-    const toast = document.getElementById('toast');
+    // Auto-hide success toast
+    const toast = document.getElementById("toast");
     if (toast) {
       setTimeout(() => {
-        toast.style.opacity = '0';
+        toast.style.opacity = "0";
         setTimeout(() => toast.remove(), 500);
       }, 3000);
+    }
+
+    // Helper: add product to basket (reused)
+    function addProductToBasket(productId, name, unitPrice, qty = 1) {
+      const product = productsData.find((p) => p.id === productId);
+      if (!product) return false;
+      if (qty > product.stock) {
+        window.showToast(`Only ${product.stock} in stock`, "error");
+        return false;
+      }
+      const existing = basket.find((item) => item.productId === productId);
+      if (existing) {
+        const newQty = existing.qty + qty;
+        if (newQty > product.stock) {
+          window.showToast(
+            `Cannot add. Stock would exceed ${product.stock}`,
+            "error"
+          );
+          return false;
+        }
+        existing.qty = newQty;
+        existing.total = newQty * existing.unitPrice;
+      } else {
+        basket.push({
+          productId: product.id,
+          name: product.name,
+          qty: qty,
+          unitPrice: product.price,
+          total: qty * product.price,
+        });
+      }
+      renderBasket();
+      return true;
     }
 
     function updateTotals() {
       const subtotal = basket.reduce((sum, item) => sum + item.total, 0);
       if (subtotalSpan) subtotalSpan.innerText = subtotal.toFixed(0);
       let discount = 0;
-      const discVal = discountValue ? (parseFloat(discountValue.value) || 0) : 0;
-      if (discountType && discountType.value === 'percentage') {
+      const discVal = discountValue ? parseFloat(discountValue.value) || 0 : 0;
+      if (discountType && discountType.value === "percentage") {
         discount = subtotal * (discVal / 100);
       } else {
         discount = discVal;
@@ -124,10 +226,10 @@ const products = rawDb.prepare('SELECT id, name, price, stock, unit FROM product
 
     function renderBasket() {
       if (!basketBody) return;
-      basketBody.innerHTML = '';
+      basketBody.innerHTML = "";
       basket.forEach((item, idx) => {
-        const row = document.createElement('tr');
-        row.className = 'border-t';
+        const row = document.createElement("tr");
+        row.className = "border-t";
         row.innerHTML = `
           <td class="p-2">${escapeHtml(item.name)}</td>
           <td class="p-2">
@@ -144,13 +246,13 @@ const products = rawDb.prepare('SELECT id, name, price, stock, unit FROM product
     }
 
     function attachBasketEvents() {
-      document.querySelectorAll('.qty-change').forEach(input => {
-        input.removeEventListener('change', handleQtyChange);
-        input.addEventListener('change', handleQtyChange);
+      document.querySelectorAll(".qty-change").forEach((input) => {
+        input.removeEventListener("change", handleQtyChange);
+        input.addEventListener("change", handleQtyChange);
       });
-      document.querySelectorAll('.remove-item').forEach(btn => {
-        btn.removeEventListener('click', handleRemove);
-        btn.addEventListener('click', handleRemove);
+      document.querySelectorAll(".remove-item").forEach((btn) => {
+        btn.removeEventListener("click", handleRemove);
+        btn.addEventListener("click", handleRemove);
       });
     }
 
@@ -159,9 +261,9 @@ const products = rawDb.prepare('SELECT id, name, price, stock, unit FROM product
       const idx = parseInt(target.dataset.idx);
       const newQty = parseInt(target.value);
       if (!isNaN(newQty) && newQty > 0 && basket[idx]) {
-        const product = productsData.find(p => p.id === basket[idx].productId);
+        const product = productsData.find((p) => p.id === basket[idx].productId);
         if (product && newQty > product.stock) {
-          window.showToast(`Only ${product.stock} in stock`, 'error');
+          window.showToast(`Only ${product.stock} in stock`, "error");
           target.value = basket[idx].qty;
           return;
         }
@@ -178,88 +280,111 @@ const products = rawDb.prepare('SELECT id, name, price, stock, unit FROM product
     }
 
     function escapeHtml(str) {
-      return str.replace(/[&<>]/g, function(m) {
-        if (m === '&') return '&amp;';
-        if (m === '<') return '&lt;';
-        if (m === '>') return '&gt;';
+      return str.replace(/[&<>]/g, function (m) {
+        if (m === "&") return "&amp;";
+        if (m === "<") return "&lt;";
+        if (m === ">") return "&gt;";
         return m;
       });
     }
 
+    // Add product from dropdown
     if (addBtn && productSelect && quantityInput) {
-      addBtn.addEventListener('click', () => {
+      addBtn.addEventListener("click", () => {
         const productId = parseInt(productSelect.value);
         if (!productId) return;
-        const product = productsData.find(p => p.id === productId);
+        const product = productsData.find((p) => p.id === productId);
         if (!product) return;
         let qty = quantityInput ? parseInt(quantityInput.value) : 1;
         if (isNaN(qty) || qty < 1) qty = 1;
-        if (qty > product.stock) {
-          window.showToast(`Only ${product.stock} in stock`, 'error');
-          return;
-        }
-        const existing = basket.find(item => item.productId === productId);
-        if (existing) {
-          const newQty = existing.qty + qty;
-          if (newQty > product.stock) {
-            window.showToast(`Cannot add. Stock would exceed ${product.stock}`, 'error');
-            return;
-          }
-          existing.qty = newQty;
-          existing.total = newQty * existing.unitPrice;
-        } else {
-          basket.push({
-            productId: product.id,
-            name: product.name,
-            qty: qty,
-            unitPrice: product.price,
-            total: qty * product.price,
-          });
-        }
-        renderBasket();
-        productSelect.value = '';
-        if (quantityInput) quantityInput.value = '1';
+        addProductToBasket(productId, product.name, product.price, qty);
+        productSelect.value = "";
+        if (quantityInput) quantityInput.value = "1";
       });
     }
 
-    if (discountType && discountValue) {
-      discountType.addEventListener('change', updateTotals);
-      discountValue.addEventListener('input', updateTotals);
+    // Manual entry (by code)
+    if (addByCodeBtn && barcodeInput) {
+      addByCodeBtn.addEventListener("click", async () => {
+        const code = barcodeInput.value.trim();
+        if (!code) return;
+        const res = await fetch(
+          `/api/product-by-barcode?code=${encodeURIComponent(code)}`
+        );
+        if (res.ok) {
+          const product = await res.json();
+          addProductToBasket(product.id, product.name, product.price, 1);
+          barcodeInput.value = "";
+        } else {
+          window.showToast("Product not found", "error");
+        }
+      });
     }
 
+    // Barcode scanner
+    if (scanBarcodeBtn) {
+      scanBarcodeBtn.addEventListener("click", () => {
+        window.showBarcodeScanner(async (barcode) => {
+          const res = await fetch(
+            `/api/product-by-barcode?code=${encodeURIComponent(barcode)}`
+          );
+          if (res.ok) {
+            const product = await res.json();
+            addProductToBasket(product.id, product.name, product.price, 1);
+          } else {
+            window.showToast("Product not found", "error");
+          }
+        });
+      });
+    }
+
+    // Discount listeners
+    if (discountType && discountValue) {
+      discountType.addEventListener("change", updateTotals);
+      discountValue.addEventListener("input", updateTotals);
+    }
+
+    // Complete sale
     if (completeBtn) {
-      completeBtn.addEventListener('click', async () => {
+      completeBtn.addEventListener("click", async () => {
         if (basket.length === 0) {
-          window.showToast('Add at least one product', 'error');
+          window.showToast("Add at least one product", "error");
           return;
         }
         const subtotal = basket.reduce((sum, item) => sum + item.total, 0);
         let discount = 0;
-        const discVal = discountValue ? (parseFloat(discountValue.value) || 0) : 0;
-        if (discountType && discountType.value === 'percentage') {
+        const discVal = discountValue
+          ? parseFloat(discountValue.value) || 0
+          : 0;
+        if (discountType && discountType.value === "percentage") {
           discount = subtotal * (discVal / 100);
         } else {
           discount = discVal;
         }
         const finalTotal = subtotal - discount;
         const payload = {
-          items: basket.map(item => ({ productId: item.productId, quantity: item.qty, unitPrice: item.unitPrice })),
-          discountType: discountType?.value || 'fixed',
+          items: basket.map((item) => ({
+            productId: item.productId,
+            quantity: item.qty,
+            unitPrice: item.unitPrice,
+          })),
+          discountType: discountType?.value || "fixed",
           discountValue: discVal,
           finalAmount: finalTotal,
         };
-        const response = await fetch('/api/complete-sale', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+        const response = await fetch("/api/complete-sale", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
         if (response.ok) {
-          window.location.href = '/admin/sales/new?success=1';
+          window.location.href = "/admin/sales/new?success=1";
         } else {
           const err = await response.text();
-          window.showToast(err, 'error');
+          window.showToast(err, "error");
         }
       });
     }
   </script>
+  <BarcodeScanner />
 </AdminLayout>

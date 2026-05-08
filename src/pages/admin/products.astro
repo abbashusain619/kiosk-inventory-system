@@ -3,13 +3,26 @@ export const prerender = false;
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import { db, rawDb } from '../../db';
 import { products, categories, suppliers } from '../../db/schema';
-import { eq } from 'drizzle-orm';
 import ConfirmModal from '../../components/ConfirmModal.astro';
 import Toast from '../../components/Toast.astro';
+import BarcodeScanner from '../../components/BarcodeScanner.astro';
 
 const { user, permissions } = Astro.locals;
 const canEdit = permissions?.includes('products.edit') ?? false;
-const allProducts = await db.select().from(products);
+
+const search = Astro.url.searchParams.get('search') || '';
+
+// Build SQL with search filter
+let sql = "SELECT * FROM products";
+let params: string[] = [];
+if (search) {
+  sql += " WHERE (name LIKE ? OR sku LIKE ? OR barcode LIKE ?)";
+  const like = `%${search}%`;
+  params = [like, like, like];
+}
+sql += " ORDER BY id DESC";
+const allProducts = rawDb.prepare(sql).all(...params) as any[];
+
 const allCategories = await db.select().from(categories);
 const allSuppliers = await db.select().from(suppliers);
 ---
@@ -24,13 +37,34 @@ const allSuppliers = await db.select().from(suppliers);
       <a href="/admin/dashboard" class="text-blue-600">← Dashboard</a>
     </div>
 
+    <!-- Search & Barcode Scan -->
+    <div class="bg-white p-4 rounded shadow mb-4">
+      <form method="get" class="flex gap-2">
+        <input
+          type="text"
+          name="search"
+          value={search}
+          placeholder="Search by name, SKU, or barcode"
+          class="border p-2 rounded flex-1"
+        />
+        <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded">Search</button>
+        <button type="button" id="scanSearchBtn" class="bg-purple-600 text-white px-4 py-2 rounded">Scan Barcode</button>
+        {search && (
+          <a href="/admin/products" class="bg-gray-500 text-white px-4 py-2 rounded">Clear</a>
+        )}
+      </form>
+    </div>
+
     <!-- Add Product Form (only if user has edit permission) -->
     {canEdit && (
       <div class="bg-white p-4 rounded shadow mb-8">
         <h2 class="text-xl font-semibold mb-3">Add New Product</h2>
         <form method="post" action="/api/create-product">
+          <!-- ... same form fields as before ... -->
           <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
             <input type="text" name="name" placeholder="Product name" required class="border p-2 rounded" />
+            <input type="text" name="sku" placeholder="SKU (unique)" required class="border p-2 rounded" />
+            <input type="text" name="barcode" placeholder="Barcode (optional)" class="border p-2 rounded" />
             <input type="number" step="0.01" name="price" placeholder="Selling price" required class="border p-2 rounded" />
             <input type="number" step="0.01" name="costPrice" placeholder="Cost price (total)" class="border p-2 rounded" />
             <input type="number" step="0.01" name="stock" placeholder="Stock" class="border p-2 rounded" />
@@ -70,6 +104,8 @@ const allSuppliers = await db.select().from(suppliers);
         <thead class="bg-gray-100">
           <tr>
             <th class="p-3 text-left">Name</th>
+            <th class="p-3 text-left">SKU</th>
+            <th class="p-3 text-left">Barcode</th>
             <th class="p-3 text-left">Price/Promo</th>
             <th class="p-3 text-left">Cost</th>
             <th class="p-3 text-left">Stock</th>
@@ -83,9 +119,9 @@ const allSuppliers = await db.select().from(suppliers);
         </thead>
         <tbody>
           {allProducts.map(product => {
-            const cat = allCategories.find(c => c.id === product.categoryId);
-            const sup = allSuppliers.find(s => s.id === product.supplierId);
-            const hasPromo = product.onPromotion && product.promoPrice && product.promoPrice < product.price;
+            const cat = allCategories.find(c => c.id === product.category_id);
+            const sup = allSuppliers.find(s => s.id === product.supplier_id);
+            const hasPromo = product.on_promotion && product.promo_price && product.promo_price < product.price;
             const isDeleted = !product.active;
             return (
               <tr class={`border-t ${isDeleted ? 'bg-gray-100 opacity-75' : ''}`} data-product-id={product.id}>
@@ -93,19 +129,21 @@ const allSuppliers = await db.select().from(suppliers);
                   {product.name}
                   {isDeleted && <span class="ml-2 text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded">DELETED</span>}
                 </td>
+                <td class="p-3">{product.sku || '-'}</td>
+                <td class="p-3">{product.barcode || '-'}</td>
                 <td class="p-3">
                   {hasPromo ? (
-                    <><span class="line-through text-gray-500">Tsh {product.price}</span> → <span class="text-red-600 font-bold">Tsh {product.promoPrice}</span></>
+                    <><span class="line-through text-gray-500">Tsh {product.price}</span> → <span class="text-red-600 font-bold">Tsh {product.promo_price}</span></>
                   ) : (
                     `Tsh ${product.price}`
                   )}
                 </td>
-                <td class="p-3">{product.costPrice ? `Tsh ${product.costPrice}` : '-'}</td>
+                <td class="p-3">{product.cost_price ? `Tsh ${product.cost_price}` : '-'}</td>
                 <td class="p-3">
                   <span class="stock-cell stock-value" data-product-id={product.id}>{product.stock}</span> {product.unit || 'piece'}
                 </td>
                 <td class="p-3">
-                  <input type="number" step="1" name="minStock" value={product.minStock || 5} class="border p-1 w-16 text-sm" disabled={isDeleted} />
+                  <input type="number" step="1" name="minStock" value={product.min_stock || 5} class="border p-1 w-16 text-sm" disabled={isDeleted} />
                 </td>
                 <td class="p-3">{product.unit || 'piece'}</td>
                 <td class="p-3">{cat?.name || '-'}</td>
@@ -118,10 +156,12 @@ const allSuppliers = await db.select().from(suppliers);
                           <input type="hidden" name="id" value={product.id} />
                           <input type="hidden" name="active" value="1" />
                           <input type="text" name="name" value={product.name} class="border p-1 w-24 text-sm" required disabled={isDeleted} />
+                          <input type="text" name="sku" value={product.sku || ''} class="border p-1 w-24 text-sm" required disabled={isDeleted} />
+                          <input type="text" name="barcode" value={product.barcode || ''} class="border p-1 w-24 text-sm" disabled={isDeleted} />
                           <input type="number" step="0.01" name="price" value={product.price} class="border p-1 w-20 text-sm" required disabled={isDeleted} />
-                          <input type="number" step="0.01" name="costPrice" value={product.costPrice || ''} class="border p-1 w-20 text-sm" placeholder="cost" disabled={isDeleted} />
+                          <input type="number" step="0.01" name="costPrice" value={product.cost_price || ''} class="border p-1 w-20 text-sm" placeholder="cost" disabled={isDeleted} />
                           <input type="number" step="0.01" name="stock" value={product.stock} class="border p-1 w-16 text-sm" disabled={isDeleted} />
-                          <input type="number" step="1" name="minStock" value={product.minStock || 5} class="border p-1 w-16 text-sm" disabled={isDeleted} />
+                          <input type="number" step="1" name="minStock" value={product.min_stock || 5} class="border p-1 w-16 text-sm" disabled={isDeleted} />
                           <select name="unit" class="border p-1 text-sm" disabled={isDeleted}>
                             <option value="piece" selected={product.unit === 'piece'}>piece</option>
                             <option value="kg" selected={product.unit === 'kg'}>kg</option>
@@ -132,20 +172,20 @@ const allSuppliers = await db.select().from(suppliers);
                           <select name="categoryId" class="border p-1 text-sm" disabled={isDeleted}>
                             <option value="">None</option>
                             {allCategories.map(cat => (
-                              <option value={cat.id} selected={cat.id === product.categoryId}>{cat.name}</option>
+                              <option value={cat.id} selected={cat.id === product.category_id}>{cat.name}</option>
                             ))}
                           </select>
                           <select name="supplierId" class="border p-1 text-sm" disabled={isDeleted}>
                             <option value="">None</option>
                             {allSuppliers.map(sup => (
-                              <option value={sup.id} selected={sup.id === product.supplierId}>{sup.name}</option>
+                              <option value={sup.id} selected={sup.id === product.supplier_id}>{sup.name}</option>
                             ))}
                           </select>
                           <span class="flex items-center gap-1">
-                            <input type="checkbox" name="onPromotion" value="1" class="w-4 h-4" checked={product.onPromotion} disabled={isDeleted} />
+                            <input type="checkbox" name="onPromotion" value="1" class="w-4 h-4" checked={product.on_promotion} disabled={isDeleted} />
                             <label class="text-xs">Promo</label>
                           </span>
-                          <input type="number" step="0.01" name="promoPrice" value={product.promoPrice || ''} placeholder="Promo price" class="border p-1 w-20 text-sm" disabled={isDeleted} />
+                          <input type="number" step="0.01" name="promoPrice" value={product.promo_price || ''} placeholder="Promo price" class="border p-1 w-20 text-sm" disabled={isDeleted} />
                           {!isDeleted && <button type="submit" class="bg-blue-600 text-white px-2 py-1 rounded text-sm">Save</button>}
                         </form>
                         {!isDeleted ? (
@@ -229,5 +269,18 @@ const allSuppliers = await db.select().from(suppliers);
     });
   </script>
 
+  <!-- Barcode scanner integration for search -->
+  <script lang="js">
+    const scanBtn = document.getElementById('scanSearchBtn');
+    if (scanBtn) {
+      scanBtn.addEventListener('click', () => {
+        window.showBarcodeScanner(async (code) => {
+          window.location.href = `/admin/products?search=${encodeURIComponent(code)}`;
+        });
+      });
+    }
+  </script>
+
+  <BarcodeScanner />
   <ConfirmModal />
 </AdminLayout>

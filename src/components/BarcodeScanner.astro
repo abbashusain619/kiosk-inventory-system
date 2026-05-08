@@ -1,0 +1,83 @@
+<div id="barcodeScannerModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center z-50">
+  <div class="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
+    <h3 class="text-lg font-semibold mb-4">Scan Barcode</h3>
+    <div id="barcodeReader" style="width: 100%;"></div>
+    <p id="barcodeStatus" class="text-sm text-gray-500 mt-2">Position barcode in front of camera</p>
+    <div class="mt-4 flex justify-end">
+      <button id="closeBarcodeScannerModal" class="bg-gray-300 px-4 py-2 rounded">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script lang="js">
+  let scanner = null;
+  let scanning = false;
+  const scannerModal = document.getElementById('barcodeScannerModal');
+  const scannerStatus = document.getElementById('barcodeStatus');
+  const scannerCloseBtn = document.getElementById('closeBarcodeScannerModal');
+
+  function loadLibrary(cb) {
+    if (window.Html5Qrcode) {
+      cb();
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = 'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js';
+    script.onload = cb;
+    document.head.appendChild(script);
+  }
+
+  async function initScanner() {
+    if (scanner) return;
+    loadLibrary(() => {
+      scanner = new Html5Qrcode("barcodeReader");
+    });
+  }
+  initScanner();
+
+  async function startScan() {
+    if (scanning || !scanner) return;
+    scanning = true;
+    try {
+      await scanner.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        (decodedText) => {
+          scanning = false;
+          scanner.stop().catch(()=>{});
+          scannerModal.classList.remove('flex');
+          scannerModal.classList.add('hidden');
+          if (window.onBarcodeScanned) window.onBarcodeScanned(decodedText);
+        },
+        (err) => {
+          if (scannerStatus && err.includes('No barcode')) {
+            scannerStatus.innerText = 'Align barcode in frame';
+          }
+        }
+      );
+    } catch (err) {
+      console.error(err);
+      scanning = false;
+    }
+  }
+
+  function stopScan() {
+    if (!scanning) return;
+    scanning = false;
+    if (scanner) {
+      scanner.stop().catch(()=>{});
+    }
+    scannerModal.classList.remove('flex');
+    scannerModal.classList.add('hidden');
+  }
+
+  if (scannerCloseBtn) scannerCloseBtn.addEventListener('click', stopScan);
+
+  window.showBarcodeScanner = async (callback) => {
+    window.onBarcodeScanned = callback;
+    scannerModal.classList.remove('hidden');
+    scannerModal.classList.add('flex');
+    if (scannerStatus) scannerStatus.innerText = 'Starting camera...';
+    await startScan();
+  };
+</script>

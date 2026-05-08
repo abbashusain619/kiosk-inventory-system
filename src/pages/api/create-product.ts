@@ -13,6 +13,8 @@ const postHandler: APIRoute = async ({ request, redirect, locals }) => {
   const formData = await request.formData();
   const data = {
     name: formData.get('name')?.toString(),
+    sku: formData.get('sku')?.toString() || '',
+    barcode: formData.get('barcode')?.toString() || null,
     price: Number(formData.get('price')),
     cost_price: formData.get('costPrice') ? Number(formData.get('costPrice')) : null,
     stock: Number(formData.get('stock')),

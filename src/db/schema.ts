@@ -5,6 +5,8 @@ import { sqliteTable, text, integer, real } from 'drizzle-orm/sqlite-core';
 export const products = sqliteTable('products', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   name: text('name').notNull(),
+  sku: text('sku').unique().notNull(),
+  barcode: text('barcode'),
   price: real('price').notNull(), // selling price
   stock: real('stock').notNull().default(0), // current quantity
   minStock: integer('min_stock').default(5), //low stock alert

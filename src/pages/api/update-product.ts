@@ -15,6 +15,8 @@ const postHandler: APIRoute = async ({ request, redirect, locals }) => {
   const data = {
     id,
     name: formData.get('name')?.toString(),
+    sku: formData.get('sku')?.toString() || '',
+    barcode: formData.get('barcode')?.toString() || null,
     price: Number(formData.get('price')),
     cost_price: formData.get('costPrice') ? Number(formData.get('costPrice')) : null,
     stock: Number(formData.get('stock')),
@@ -33,6 +35,8 @@ const postHandler: APIRoute = async ({ request, redirect, locals }) => {
     type: 'product-updated',
     productId: updated.id,
     name: updated.name,
+    sku: updated.sku,
+    barcode: updated.barcode,
     price: updated.price,
     stock: updated.stock,
     minStock: updated.min_stock,
