@@ -16,7 +16,7 @@ if (!canView) {
   return Astro.redirect("/admin/dashboard");
 }
 
-// Fetch movements (only if can view)
+// Fetch movements
 const movements = rawDb
   .prepare(
     `
@@ -41,239 +41,277 @@ const categories = rawDb
 ---
 
 <AdminLayout>
-  <div class="max-w-6xl mx-auto">
-    <div class="flex justify-between items-center mb-4">
-      <h1 class="text-2xl font-bold">Transactions (Stock Movements)</h1>
+  <div class="p-4">
+    <!-- Refresh button row (no title – handled by top bar) -->
+    <div class="flex justify-end mb-4">
       <button
         id="refreshBtn"
-        class="bg-blue-600 text-white px-4 py-2 rounded text-sm">Refresh</button
+        class="bg-primary-500 text-white px-4 py-2 rounded-lg hover:bg-primary-600 transition text-sm"
       >
+        Refresh
+      </button>
     </div>
 
-    <!-- Record Movement Form (only if user has permission) -->
-    {
-      canRecord && (
-        <div class="bg-white p-4 rounded shadow mb-6">
-          <h2 class="text-xl font-semibold mb-3">Add Movement</h2>
-          <form method="post" action="/api/add-movement" id="movementForm">
-            <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
-              <div class="relative">
-                <select
-                  name="productId"
-                  id="productSelect"
-                  required
-                  class="border p-2 rounded w-full"
-                >
-                  <option value="">Select product</option>
-                  {products.map((p) => (
-                    <option value={p.id}>{p.name}</option>
-                  ))}
-                </select>
-                <div class="flex gap-2 items-center mt-2">
-                  <input
-                    type="text"
-                    id="barcodeInput"
-                    placeholder="Scan or type barcode/SKU"
-                    class="border p-2 rounded flex-1"
-                  />
-                  <button
-                    type="button"
-                    id="lookupBarcodeBtn"
-                    class="bg-blue-600 text-white px-3 py-2 rounded"
-                  >
-                    Lookup
-                  </button>
-                  <button
-                    type="button"
-                    id="scanBarcodeTransactionsBtn"
-                    class="bg-purple-600 text-white px-3 py-2 rounded"
-                  >
-                    Scan
-                  </button>
-                </div>
-                {canAddProduct && (
-                  <button
-                    type="button"
-                    id="quickAddProductBtn"
-                    class="absolute right-1 top-1 bg-blue-600 text-white text-xs px-2 py-1 rounded"
-                  >
-                    + New
-                  </button>
-                )}
-              </div>
-              <select name="type" id="movementType" required class="border p-2 rounded">
-                {canIn && <option value="in">Purchase (Stock In)</option>}
-                {canAdjust && <option value="adjustment">Adjustment</option>}
-                {canAdjust && <option value="cost_correction">Cost Correction (adjust cost only)</option>}
-              </select>
-              <div class="flex gap-2">
-                <input
-                  type="number"
-                  step="0.01"
-                  name="quantity"
-                  id="quantityInput"
-                  placeholder="Quantity"
-                  required
-                  class="border p-2 rounded flex-1"
-                />
-                <select id="unitSelect" class="border p-2 rounded w-32">
-                  <!-- dynamically populated -->
-                </select>
-              </div>
-              <input
-                type="number"
-                step="0.01"
-                name="totalCost"
-                id="totalCostInput"
-                placeholder="Total cost (for purchase)"
-                class="border p-2 rounded"
-              />
-              <input
-                type="number"
-                step="0.01"
-                name="newCost"
-                id="newCostInput"
-                placeholder="New cost per unit (for cost correction)"
-                class="border p-2 rounded"
-                style="display: none;"
-              />
-              <div class="relative">
-                <select
-                  name="supplierId"
-                  id="supplierSelect"
-                  class="border p-2 rounded w-full"
-                >
-                  <option value="">Supplier (optional)</option>
-                  {suppliers.map((s) => (
-                    <option value={s.id}>{s.name}</option>
-                  ))}
-                </select>
-                {canAddSupplier && (
-                  <button
-                    type="button"
-                    id="quickAddSupplierBtn"
-                    class="absolute right-1 top-1 bg-blue-600 text-white text-xs px-2 py-1 rounded"
-                  >
-                    + New
-                  </button>
-                )}
-              </div>
-            </div>
-            <div class="mt-3">
-              <input
-                type="text"
-                name="reason"
-                placeholder="Reason (e.g., purchase, spoilage)"
-                class="border p-2 rounded w-full"
-              />
-            </div>
-            <button
-              type="submit"
-              class="mt-3 bg-blue-600 text-white px-4 py-2 rounded"
-            >
-              Record Movement
-            </button>
-          </form>
+    <!-- Record Movement Form -->
+{canRecord && (
+  <div class="bg-white dark:bg-ash-800 rounded-xl shadow-sm p-6 mb-6">
+    <h2 class="text-xl font-semibold mb-4 text-ash-800 dark:text-white">Add Movement</h2>
+    <form method="post" action="/api/add-movement" id="movementForm" class="space-y-5">
+      <!-- Row 1: Product selection + barcode row -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <!-- Product select -->
+        <div>
+          <label class="block text-sm font-medium text-ash-700 dark:text-ash-300 mb-1">Product</label>
+          <select
+            name="productId"
+            id="productSelect"
+            required
+            class="w-full border border-ash-300 dark:border-ash-600 rounded-lg px-3 py-2 dark:bg-ash-800 dark:text-white"
+          >
+            <option value="">Select product</option>
+            {products.map((p) => (
+              <option value={p.id}>{p.name}</option>
+            ))}
+          </select>
         </div>
-      )
-    }
 
-    <!-- Movements Table -->
-    <div class="bg-white rounded shadow overflow-x-auto">
-      <table class="w-full min-w-[700px]">
-        <thead class="bg-gray-100">
+        <!-- Barcode input + lookup + scan -->
+        <div class="md:col-span-2">
+          <label class="block text-sm font-medium text-ash-700 dark:text-ash-300 mb-1">Barcode / SKU</label>
+          <div class="flex gap-2">
+            <input
+              type="text"
+              id="barcodeInput"
+              placeholder="Scan or type barcode/SKU"
+              class="flex-1 border border-ash-300 dark:border-ash-600 rounded-lg px-3 py-2 dark:bg-ash-800 dark:text-white"
+            />
+            <button
+              type="button"
+              id="lookupBarcodeBtn"
+              class="bg-primary-500 text-white px-4 py-2 rounded-lg hover:bg-primary-600 transition"
+            >
+              Lookup
+            </button>
+            <button
+              type="button"
+              id="scanBarcodeTransactionsBtn"
+              class="bg-secondary-500 text-white px-4 py-2 rounded-lg hover:bg-secondary-600 transition"
+            >
+              Scan
+            </button>
+          </div>
+          {canAddProduct && (
+            <button
+              type="button"
+              id="quickAddProductBtn"
+              class="text-primary-600 dark:text-primary-400 text-sm underline mt-1"
+            >
+              + New Product
+            </button>
+          )}
+        </div>
+      </div>
+
+      <!-- Row 2: Movement type, quantity + unit, total cost -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <!-- Movement type -->
+        <div>
+          <label class="block text-sm font-medium text-ash-700 dark:text-ash-300 mb-1">Movement Type</label>
+          <select name="type" id="movementType" required class="w-full border border-ash-300 dark:border-ash-600 rounded-lg px-3 py-2 dark:bg-ash-800 dark:text-white">
+            {canIn && <option value="in">Purchase (Stock In)</option>}
+            {canAdjust && <option value="adjustment">Adjustment</option>}
+            {canAdjust && <option value="cost_correction">Cost Correction (adjust cost only)</option>}
+          </select>
+        </div>
+
+        <!-- Quantity + Unit -->
+        <div>
+          <label class="block text-sm font-medium text-ash-700 dark:text-ash-300 mb-1">Quantity &amp; Unit</label>
+          <div class="flex gap-2">
+            <input
+              type="number"
+              step="0.01"
+              name="quantity"
+              id="quantityInput"
+              placeholder="Quantity"
+              required
+              class="flex-1 border border-ash-300 dark:border-ash-600 rounded-lg px-3 py-2 dark:bg-ash-800 dark:text-white"
+            />
+            <select id="unitSelect" class="w-32 border border-ash-300 dark:border-ash-600 rounded-lg px-3 py-2 dark:bg-ash-800 dark:text-white">
+              <option value="base">piece</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Total cost (visible for purchase) -->
+        <div id="totalCostContainer">
+          <label class="block text-sm font-medium text-ash-700 dark:text-ash-300 mb-1">Total Cost (Tsh)</label>
+          <input
+            type="number"
+            step="0.01"
+            name="totalCost"
+            id="totalCostInput"
+            placeholder="For purchase"
+            class="w-full border border-ash-300 dark:border-ash-600 rounded-lg px-3 py-2 dark:bg-ash-800 dark:text-white"
+          />
+        </div>
+
+        <!-- New cost (visible for cost correction) -->
+        <div id="newCostContainer" style="display: none;">
+          <label class="block text-sm font-medium text-ash-700 dark:text-ash-300 mb-1">New Cost per Unit (Tsh)</label>
+          <input
+            type="number"
+            step="0.01"
+            name="newCost"
+            id="newCostInput"
+            placeholder="New cost per unit"
+            class="w-full border border-ash-300 dark:border-ash-600 rounded-lg px-3 py-2 dark:bg-ash-800 dark:text-white"
+          />
+        </div>
+      </div>
+
+      <!-- Row 3: Supplier + Reason -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-ash-700 dark:text-ash-300 mb-1">Supplier (optional)</label>
+          <div class="relative">
+            <select
+              name="supplierId"
+              id="supplierSelect"
+              class="w-full border border-ash-300 dark:border-ash-600 rounded-lg px-3 py-2 dark:bg-ash-800 dark:text-white"
+            >
+              <option value="">Select supplier</option>
+              {suppliers.map((s) => (
+                <option value={s.id}>{s.name}</option>
+              ))}
+            </select>
+            {canAddSupplier && (
+              <button
+                type="button"
+                id="quickAddSupplierBtn"
+                class="text-primary-600 dark:text-primary-400 text-sm underline mt-1"
+              >
+                + New Supplier
+              </button>
+            )}
+          </div>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-ash-700 dark:text-ash-300 mb-1">Reason</label>
+          <input
+            type="text"
+            name="reason"
+            placeholder="e.g., purchase, spoilage"
+            class="w-full border border-ash-300 dark:border-ash-600 rounded-lg px-3 py-2 dark:bg-ash-800 dark:text-white"
+          />
+        </div>
+      </div>
+
+      <button
+        type="submit"
+        class="bg-primary-500 text-white px-5 py-2 rounded-lg hover:bg-primary-600 transition shadow-sm"
+      >
+        Record Movement
+      </button>
+    </form>
+  </div>
+)}
+    <!-- Movements Table (horizontal scroll) -->
+    <div class="bg-white dark:bg-ash-800 rounded-xl shadow-sm overflow-x-auto">
+      <table class="w-full">
+        <thead class="bg-ash-50 dark:bg-ash-700">
           <tr>
-            <th class="p-2">Date</th><th class="p-2">Product</th><th class="p-2"
-              >Type</th
-            ><th class="p-2">Quantity</th><th class="p-2">Total (Tsh)</th><th
-              class="p-2">Reason</th
-            ><th class="p-2">User</th>
+            <th class="p-3 text-left text-ash-700 dark:text-ash-200">Date</th>
+            <th class="p-3 text-left text-ash-700 dark:text-ash-200">Product</th>
+            <th class="p-3 text-left text-ash-700 dark:text-ash-200">Type</th>
+            <th class="p-3 text-left text-ash-700 dark:text-ash-200">Quantity</th>
+            <th class="p-3 text-left text-ash-700 dark:text-ash-200">Total (Tsh)</th>
+            <th class="p-3 text-left text-ash-700 dark:text-ash-200">Reason</th>
+            <th class="p-3 text-left text-ash-700 dark:text-ash-200">User</th>
           </tr>
         </thead>
         <tbody>
-          {
-            movements.map((m, idx) => (
-              <tr class="border-t">
-                <td class="p-2">{new Date(m.created_at).toLocaleString()}</td>
-                <td class="p-2">{m.product_name}</td>
-                <td class="p-2">{m.type}</td>
-                <td class="p-2">{m.quantity}</td>
-                <td class="p-2">{m.total_price || m.total_cost || "-"}</td>
-                <td class="p-2">{m.reason || "-"}</td>
-                <td class="p-2">{m.user_id}</td>
-              </td>
-            ))
-          }
+          {movements.map((m) => (
+            <tr class="border-t border-ash-200 dark:border-ash-700">
+              <td class="p-3 dark:text-ash-200">{new Date(m.created_at).toLocaleString()}</td>
+              <td class="p-3 dark:text-ash-200">{m.product_name}</td>
+              <td class="p-3 dark:text-ash-200">{m.type}</td>
+              <td class="p-3 dark:text-ash-200">{m.quantity}</td>
+              <td class="p-3 dark:text-ash-200">{m.total_price || m.total_cost || "-"}</td>
+              <td class="p-3 dark:text-ash-200">{m.reason || "-"}</td>
+              <td class="p-3 dark:text-ash-200">{m.user_id}</td>
+            </tr>
+          ))}
         </tbody>
       </table>
     </div>
   </div>
 
-  <!-- Modal for Quick Add Product (with bulk fields) -->
+  <!-- Modals (same as before, but with dark mode classes – I'll update them for consistency) -->
+  <!-- Quick Add Product Modal -->
   <div
     id="productModal"
-    class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center z-50"
+    class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50"
   >
-    <div class="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
-      <h3 class="text-lg font-semibold mb-4">Add New Product</h3>
-      <form id="quickProductForm">
-        <div class="mb-3">
-          <label class="block text-sm font-medium">Product Name *</label>
-          <input type="text" id="prodName" required class="border p-2 rounded w-full" />
+    <div class="bg-white dark:bg-ash-800 rounded-xl shadow-xl max-w-md w-full p-6">
+      <h3 class="text-lg font-semibold mb-4 text-ash-800 dark:text-white">Add New Product</h3>
+      <form id="quickProductForm" class="space-y-3">
+        <div>
+          <label class="block text-sm font-medium text-ash-700 dark:text-ash-300">Product Name *</label>
+          <input type="text" id="prodName" required class="w-full border border-ash-300 dark:border-ash-600 rounded-lg px-3 py-2 dark:bg-ash-800 dark:text-white" />
         </div>
-        <div class="mb-3">
-          <label class="block text-sm font-medium">Selling Price *</label>
-          <input type="number" step="0.01" id="prodPrice" required class="border p-2 rounded w-full" />
+        <div>
+          <label class="block text-sm font-medium text-ash-700 dark:text-ash-300">Selling Price *</label>
+          <input type="number" step="0.01" id="prodPrice" required class="w-full border border-ash-300 dark:border-ash-600 rounded-lg px-3 py-2 dark:bg-ash-800 dark:text-white" />
         </div>
-        <div class="mb-3">
-          <label class="block text-sm font-medium">Unit</label>
-          <select id="prodUnit" class="border p-2 rounded w-full">
-            <option value="piece">piece</option><option value="kg">kg</option><option value="g">g</option>
-            <option value="L">L</option><option value="ml">ml</option>
+        <div>
+          <label class="block text-sm font-medium text-ash-700 dark:text-ash-300">Unit</label>
+          <select id="prodUnit" class="w-full border border-ash-300 dark:border-ash-600 rounded-lg px-3 py-2 dark:bg-ash-800 dark:text-white">
+            <option value="piece">piece</option><option value="kg">kg</option><option value="g">g</option><option value="L">L</option><option value="ml">ml</option>
           </select>
         </div>
-        <div class="mb-3">
-          <label class="block text-sm font-medium">Bulk Unit (optional)</label>
-          <input type="text" id="prodBulkUnit" placeholder="e.g., carton" class="border p-2 rounded w-full" />
+        <div>
+          <label class="block text-sm font-medium text-ash-700 dark:text-ash-300">Bulk Unit (optional)</label>
+          <input type="text" id="prodBulkUnit" placeholder="e.g., carton" class="w-full border border-ash-300 dark:border-ash-600 rounded-lg px-3 py-2 dark:bg-ash-800 dark:text-white" />
         </div>
-        <div class="mb-3">
-          <label class="block text-sm font-medium">Bulk Factor (optional)</label>
-          <input type="number" step="0.01" id="prodBulkFactor" placeholder="e.g., 12" class="border p-2 rounded w-full" value="1" />
+        <div>
+          <label class="block text-sm font-medium text-ash-700 dark:text-ash-300">Bulk Factor (optional)</label>
+          <input type="number" step="0.01" id="prodBulkFactor" placeholder="e.g., 12" class="w-full border border-ash-300 dark:border-ash-600 rounded-lg px-3 py-2 dark:bg-ash-800 dark:text-white" value="1" />
         </div>
-        <div class="mb-3">
-          <label class="block text-sm font-medium">Category (optional)</label>
-          <input type="text" id="prodCategory" list="categoryOptions" class="border p-2 rounded w-full" />
+        <div>
+          <label class="block text-sm font-medium text-ash-700 dark:text-ash-300">Category (optional)</label>
+          <input type="text" id="prodCategory" list="categoryOptions" class="w-full border border-ash-300 dark:border-ash-600 rounded-lg px-3 py-2 dark:bg-ash-800 dark:text-white" />
           <datalist id="categoryOptions">
             {categories.map((c) => <option value={c.name} />)}
           </datalist>
         </div>
-        <div class="flex justify-end gap-2">
-          <button type="button" id="closeProductModal" class="bg-gray-300 px-4 py-2 rounded">Cancel</button>
-          <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded">Create Product</button>
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" id="closeProductModal" class="bg-gray-400 dark:bg-ash-700 text-white px-4 py-2 rounded-lg">Cancel</button>
+          <button type="submit" class="bg-primary-500 text-white px-4 py-2 rounded-lg hover:bg-primary-600 transition">Create Product</button>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- Modal for Quick Add Supplier (unchanged) -->
+  <!-- Quick Add Supplier Modal -->
   <div
     id="supplierModal"
-    class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center z-50"
+    class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50"
   >
-    <div class="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
-      <h3 class="text-lg font-semibold mb-4">Add New Supplier</h3>
-      <form id="quickSupplierForm">
-        <div class="mb-3">
-          <label class="block text-sm font-medium">Supplier Name *</label>
-          <input type="text" id="supName" required class="border p-2 rounded w-full" />
+    <div class="bg-white dark:bg-ash-800 rounded-xl shadow-xl max-w-md w-full p-6">
+      <h3 class="text-lg font-semibold mb-4 text-ash-800 dark:text-white">Add New Supplier</h3>
+      <form id="quickSupplierForm" class="space-y-3">
+        <div>
+          <label class="block text-sm font-medium text-ash-700 dark:text-ash-300">Supplier Name *</label>
+          <input type="text" id="supName" required class="w-full border border-ash-300 dark:border-ash-600 rounded-lg px-3 py-2 dark:bg-ash-800 dark:text-white" />
         </div>
-        <div class="mb-3">
-          <label class="block text-sm font-medium">Phone (optional)</label>
-          <input type="text" id="supPhone" class="border p-2 rounded w-full" />
+        <div>
+          <label class="block text-sm font-medium text-ash-700 dark:text-ash-300">Phone (optional)</label>
+          <input type="text" id="supPhone" class="w-full border border-ash-300 dark:border-ash-600 rounded-lg px-3 py-2 dark:bg-ash-800 dark:text-white" />
         </div>
-        <div class="flex justify-end gap-2">
-          <button type="button" id="closeSupplierModal" class="bg-gray-300 px-4 py-2 rounded">Cancel</button>
-          <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded">Create Supplier</button>
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" id="closeSupplierModal" class="bg-gray-400 dark:bg-ash-700 text-white px-4 py-2 rounded-lg">Cancel</button>
+          <button type="submit" class="bg-primary-500 text-white px-4 py-2 rounded-lg hover:bg-primary-600 transition">Create Supplier</button>
         </div>
       </form>
     </div>
@@ -281,7 +319,7 @@ const categories = rawDb
 
   <script lang="js">
     document.addEventListener("DOMContentLoaded", () => {
-      // DOM elements
+      // DOM elements (same as before, but using the new IDs)
       const productModal = document.getElementById("productModal");
       const supplierModal = document.getElementById("supplierModal");
       const quickProductBtn = document.getElementById("quickAddProductBtn");
@@ -306,11 +344,10 @@ const categories = rawDb
       let currentBulkFactor = 1;
       let currentBulkUnit = null;
 
-      // Helper: show/hide modal
       function showModal(modal) { if (modal) { modal.classList.remove("hidden"); modal.classList.add("flex"); } }
       function hideModal(modal) { if (modal) { modal.classList.remove("flex"); modal.classList.add("hidden"); } }
 
-      // Quick add product logic (includes bulk fields)
+      // Quick add product logic (unchanged)
       if (productForm) {
         productForm.addEventListener("submit", async (e) => {
           e.preventDefault();
@@ -335,21 +372,17 @@ const categories = rawDb
             opt.textContent = newProduct.name;
             if (productSelect) productSelect.appendChild(opt);
             if (productSelect) productSelect.value = newProduct.id;
-            // Also trigger product change to load units
             productSelect.dispatchEvent(new Event("change"));
             hideModal(productModal);
             productForm.reset();
             if (window.showToast) window.showToast("Product created!");
-            else alert("Product created!");
           } else {
             const err = await res.text();
             if (window.showToast) window.showToast(err, "error");
-            else alert(err);
           }
         });
       }
 
-      // Quick add supplier logic
       if (supplierForm) {
         supplierForm.addEventListener("submit", async (e) => {
           e.preventDefault();
@@ -369,22 +402,18 @@ const categories = rawDb
             hideModal(supplierModal);
             supplierForm.reset();
             if (window.showToast) window.showToast("Supplier created!");
-            else alert("Supplier created!");
           } else {
             const err = await res.text();
             if (window.showToast) window.showToast(err, "error");
-            else alert(err);
           }
         });
       }
 
-      // Open modals
       if (quickProductBtn) quickProductBtn.addEventListener("click", () => showModal(productModal));
       if (closeProductModal) closeProductModal.addEventListener("click", () => hideModal(productModal));
       if (quickSupplierBtn) quickSupplierBtn.addEventListener("click", () => showModal(supplierModal));
       if (closeSupplierModal) closeSupplierModal.addEventListener("click", () => hideModal(supplierModal));
 
-      // Fetch product units when product is selected
       async function loadProductUnits(productId) {
         if (!productId) return;
         const res = await fetch(`/api/product-unit?id=${productId}`);
@@ -394,9 +423,7 @@ const categories = rawDb
           currentBulkUnit = data.bulkUnit;
           currentBulkFactor = data.bulkFactor || 1;
           unitSelect.innerHTML = `<option value="base">${currentUnit}</option>`;
-          if (currentBulkUnit) {
-            unitSelect.innerHTML += `<option value="bulk">${currentBulkUnit}</option>`;
-          }
+          if (currentBulkUnit) unitSelect.innerHTML += `<option value="bulk">${currentBulkUnit}</option>`;
         } else {
           unitSelect.innerHTML = `<option value="base">piece</option>`;
         }
@@ -408,7 +435,6 @@ const categories = rawDb
         else unitSelect.innerHTML = `<option value="base">piece</option>`;
       });
 
-      // Barcode lookup
       async function lookupProductByCode(code) {
         const res = await fetch(`/api/product-by-barcode?code=${encodeURIComponent(code)}`);
         if (res.ok) {
@@ -422,22 +448,15 @@ const categories = rawDb
         }
       }
 
-      if (lookupBtn) {
-        lookupBtn.addEventListener("click", () => {
-          const code = barcodeInput.value.trim();
-          if (code) lookupProductByCode(code);
-        });
-      }
+      if (lookupBtn) lookupBtn.addEventListener("click", () => {
+        const code = barcodeInput.value.trim();
+        if (code) lookupProductByCode(code);
+      });
 
-      if (scanBtn) {
-        scanBtn.addEventListener("click", () => {
-          window.showBarcodeScanner(async (code) => {
-            lookupProductByCode(code);
-          });
-        });
-      }
+      if (scanBtn) scanBtn.addEventListener("click", () => {
+        window.showBarcodeScanner(async (code) => lookupProductByCode(code));
+      });
 
-      // Toggle fields for cost correction
       function toggleCostCorrectionFields() {
         const isCostCorrection = movementType.value === "cost_correction";
         if (isCostCorrection) {
@@ -463,7 +482,6 @@ const categories = rawDb
         toggleCostCorrectionFields();
       }
 
-      // Convert quantity to base unit on submit
       const movementForm = document.getElementById("movementForm");
       if (movementForm) {
         movementForm.addEventListener("submit", (e) => {
@@ -478,7 +496,6 @@ const categories = rawDb
         });
       }
 
-      // Close modals when clicking outside
       window.addEventListener("click", (e) => {
         if (e.target === productModal) hideModal(productModal);
         if (e.target === supplierModal) hideModal(supplierModal);

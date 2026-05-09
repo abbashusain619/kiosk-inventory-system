@@ -16,9 +16,7 @@ const categories = rawDb.prepare('SELECT id, name FROM categories ORDER BY name'
 ---
 
 <AdminLayout>
-  <div class="max-w-2xl mx-auto">
-    <h1 class="text-2xl font-bold mb-4">Manage Categories</h1>
-
+  <div class="p-4 max-w-2xl mx-auto">
     <!-- Toasts -->
     {added && <Toast id="addToast" message="Category added successfully!" type="success" />}
     {deleted && <Toast id="deleteToast" message="Category deleted successfully!" type="success" />}
@@ -26,29 +24,53 @@ const categories = rawDb.prepare('SELECT id, name FROM categories ORDER BY name'
 
     <!-- Add Category Form (only if user has edit permission) -->
     {canEdit && (
-      <form method="post" action="/api/add-category" class="flex gap-2 mb-6">
-        <input type="text" name="name" placeholder="New category name" required class="border p-2 rounded flex-1" />
-        <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded">Add</button>
-      </form>
+      <div class="bg-white dark:bg-ash-800 rounded-xl shadow-sm p-4 mb-6">
+        <form method="post" action="/api/add-category" class="flex gap-2">
+          <input
+            type="text"
+            name="name"
+            placeholder="New category name"
+            required
+            class="flex-1 border border-ash-300 dark:border-ash-600 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-500 dark:bg-ash-800 dark:text-white"
+          />
+          <button
+            type="submit"
+            class="bg-primary-500 text-white px-4 py-2 rounded-lg hover:bg-primary-600 transition"
+          >
+            Add Category
+          </button>
+        </form>
+      </div>
     )}
 
-    <!-- Categories List (delete button only if can edit) -->
-    <ul class="bg-white rounded shadow divide-y">
-      {categories.map((cat) => (
-        <li class="p-3 flex justify-between items-center" data-category-name={cat.name}>
-          <span>{cat.name}</span>
-          {canEdit && (
-            <button type="button" class="delete-category-btn text-red-600" data-id={cat.id} data-name={cat.name}>Delete</button>
-          )}
-        </li>
-      ))}
-    </ul>
+    <!-- Categories List -->
+    <div class="bg-white dark:bg-ash-800 rounded-xl shadow-sm overflow-hidden">
+      <ul class="divide-y divide-ash-200 dark:divide-ash-700">
+        {categories.map((cat) => (
+          <li class="p-4 flex justify-between items-center">
+            <span class="text-ash-800 dark:text-ash-200">{cat.name}</span>
+            {canEdit && (
+              <button
+                type="button"
+                class="delete-category-btn text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 transition"
+                data-id={cat.id}
+                data-name={cat.name}
+              >
+                Delete
+              </button>
+            )}
+          </li>
+        ))}
+        {categories.length === 0 && (
+          <li class="p-4 text-center text-ash-500 dark:text-ash-400">No categories yet.</li>
+        )}
+      </ul>
+    </div>
   </div>
 
   <ConfirmModal />
 
   <script lang="js">
-    // Handle delete with modal (only if buttons exist)
     document.querySelectorAll('.delete-category-btn').forEach(btn => {
       btn.addEventListener('click', async (e) => {
         const id = btn.getAttribute('data-id');

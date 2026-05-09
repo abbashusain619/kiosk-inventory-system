@@ -5,101 +5,104 @@ import { rawDb } from "../../db";
 
 const { permissions } = Astro.locals;
 if (!permissions?.includes("audit.view")) {
-    return Astro.redirect("/admin/dashboard");
+  return Astro.redirect("/admin/dashboard");
 }
 
 const logs = rawDb
-    .prepare(
-        `
+  .prepare(
+    `
   SELECT a.*, u.email as user_email
   FROM audit_logs a
   LEFT JOIN admin_user u ON a.user_id = u.id
   ORDER BY a.created_at DESC
   LIMIT 500
 `,
-    )
-    .all() as any[];
+  )
+  .all() as any[];
 ---
 
 <AdminLayout>
-    <div class="max-w-6xl mx-auto">
-        <h1 class="text-2xl font-bold mb-4">Audit Logs</h1>
-        <div class="bg-white rounded shadow overflow-x-auto">
-            <table class="w-full">
-                <thead class="bg-gray-100">
-                    <tr>
-                        <th class="p-2">Time</th>
-                        <th class="p-2">User</th>
-                        <th class="p-2">Action</th>
-                        <th class="p-2">Table</th>
-                        <th class="p-2">Record ID</th>
-                        <th class="p-2">Details</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {
-                        logs.map((log) => (
-                            <tr class="border-t">
-                                <td class="p-2">
-                                    {new Date(log.created_at).toLocaleString()}
-                                </td>
-                                <td class="p-2">
-                                    {log.user_email || log.user_id}
-                                </td>
-                                <td class="p-2">{log.action}</td>
-                                <td class="p-2">{log.table_name}</td>
-                                <td class="p-2">{log.record_id || "-"}</td>
-                                <td class="p-2">
-                                    <button
-                                        class="view-details text-blue-600"
-                                        data-old={log.old_data}
-                                        data-new={log.new_data}
-                                    >
-                                        View
-                                    </button>
-                                </td>
-                            </tr>
-                        ))
-                    }
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <!-- Modal for details -->
-    <div
-        id="detailsModal"
-        class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center z-50"
-    >
-        <div class="bg-white rounded-lg shadow-lg max-w-lg w-full p-6">
-            <h3 class="text-lg font-semibold mb-4">Change Details</h3>
-            <div id="detailsContent" class="text-sm"></div>
-            <div class="mt-4 flex justify-end">
-                <button id="closeModal" class="bg-gray-300 px-4 py-2 rounded"
-                    >Close</button
+  <div class="p-4 max-w-6xl mx-auto">
+    <!-- Audit Logs Table (horizontal scroll) -->
+    <div class="bg-white dark:bg-ash-800 rounded-xl shadow-sm overflow-x-auto">
+      <table class="w-full">
+        <thead class="bg-ash-50 dark:bg-ash-700">
+          <tr>
+            <th class="p-3 text-left text-ash-700 dark:text-ash-200">Time</th>
+            <th class="p-3 text-left text-ash-700 dark:text-ash-200">User</th>
+            <th class="p-3 text-left text-ash-700 dark:text-ash-200">Action</th>
+            <th class="p-3 text-left text-ash-700 dark:text-ash-200">Table</th>
+            <th class="p-3 text-left text-ash-700 dark:text-ash-200">Record ID</th>
+            <th class="p-3 text-left text-ash-700 dark:text-ash-200">Details</th>
+          </tr>
+        </thead>
+        <tbody>
+          {logs.map((log) => (
+            <tr class="border-t border-ash-200 dark:border-ash-700">
+              <td class="p-3 dark:text-ash-200">{new Date(log.created_at).toLocaleString()}</td>
+              <td class="p-3 dark:text-ash-200">{log.user_email || log.user_id}</td>
+              <td class="p-3 dark:text-ash-200">{log.action}</td>
+              <td class="p-3 dark:text-ash-200">{log.table_name}</td>
+              <td class="p-3 dark:text-ash-200">{log.record_id || "-"}</td>
+              <td class="p-3">
+                <button
+                  class="view-details bg-primary-500 text-white px-2 py-1 rounded text-sm hover:bg-primary-600 transition"
+                  data-old={log.old_data}
+                  data-new={log.new_data}
                 >
-            </div>
-        </div>
+                  View
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
+  </div>
 
-    <script lang="js">
-        document.querySelectorAll(".view-details").forEach((btn) => {
-            btn.addEventListener("click", () => {
-                const oldData = btn.getAttribute("data-old");
-                const newData = btn.getAttribute("data-new");
-                const modal = document.getElementById("detailsModal");
-                const content = document.getElementById("detailsContent");
-                content.innerHTML = `
-          <div class="mb-2"><strong>Old data:</strong><pre class="bg-gray-100 p-2 rounded overflow-x-auto">${JSON.stringify(JSON.parse(oldData || "null"), null, 2)}</pre></div>
-          <div><strong>New data:</strong><pre class="bg-gray-100 p-2 rounded overflow-x-auto">${JSON.stringify(JSON.parse(newData || "null"), null, 2)}</pre></div>
-        `;
-                modal.classList.remove("hidden");
-                modal.classList.add("flex");
-            });
-        });
-        document.getElementById("closeModal").addEventListener("click", () => {
-            document.getElementById("detailsModal").classList.remove("flex");
-            document.getElementById("detailsModal").classList.add("hidden");
-        });
-    </script>
+  <!-- Modal for details (dark mode compatible) -->
+  <div
+    id="detailsModal"
+    class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50"
+  >
+    <div class="bg-white dark:bg-ash-800 rounded-xl shadow-xl max-w-lg w-full p-6 max-h-[80vh] overflow-y-auto">
+      <h3 class="text-lg font-semibold mb-4 text-ash-800 dark:text-white">Change Details</h3>
+      <div id="detailsContent" class="text-sm text-ash-700 dark:text-ash-200"></div>
+      <div class="mt-4 flex justify-end">
+        <button id="closeModal" class="bg-gray-400 dark:bg-ash-700 text-white px-4 py-2 rounded-lg hover:bg-gray-500 transition">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.querySelectorAll(".view-details").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const oldData = btn.getAttribute("data-old");
+        const newData = btn.getAttribute("data-new");
+        const modal = document.getElementById("detailsModal");
+        const content = document.getElementById("detailsContent");
+        if (content && modal) {
+          content.innerHTML = `
+            <div class="mb-3">
+              <strong class="text-ash-800 dark:text-white">Old data:</strong>
+              <pre class="bg-ash-100 dark:bg-ash-700 p-2 rounded overflow-x-auto mt-1">${JSON.stringify(JSON.parse(oldData || "null"), null, 2)}</pre>
+            </div>
+            <div>
+              <strong class="text-ash-800 dark:text-white">New data:</strong>
+              <pre class="bg-ash-100 dark:bg-ash-700 p-2 rounded overflow-x-auto mt-1">${JSON.stringify(JSON.parse(newData || "null"), null, 2)}</pre>
+            </div>
+          `;
+          modal.classList.remove("hidden");
+          modal.classList.add("flex");
+        }
+      });
+    });
+    document.getElementById("closeModal")?.addEventListener("click", () => {
+      const modal = document.getElementById("detailsModal");
+      if (modal) {
+        modal.classList.remove("flex");
+        modal.classList.add("hidden");
+      }
+    });
+  </script>
 </AdminLayout>

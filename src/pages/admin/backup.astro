@@ -10,11 +10,17 @@ if (!permissions?.includes('backup.download')) {
 ---
 
 <AdminLayout>
-  <div class="max-w-2xl mx-auto">
-    <h1 class="text-2xl font-bold mb-4">Backup & Recovery</h1>
-    <div class="bg-white p-6 rounded shadow">
-      <p class="mb-4">Download a copy of the entire database. Keep it safe; you can restore it later if needed.</p>
-      <button id="downloadBtn" class="bg-blue-600 text-white px-4 py-2 rounded">Download Database Backup</button>
+  <div class="p-4 max-w-2xl mx-auto">
+    <div class="bg-white dark:bg-ash-800 rounded-xl shadow-sm p-6">
+      <p class="text-ash-700 dark:text-ash-300 mb-4">
+        Download a copy of the entire database. Keep it safe; you can restore it later if needed.
+      </p>
+      <button
+        id="downloadBtn"
+        class="bg-primary-500 text-white px-4 py-2 rounded-lg hover:bg-primary-600 transition shadow-sm"
+      >
+        Download Database Backup
+      </button>
     </div>
   </div>
 

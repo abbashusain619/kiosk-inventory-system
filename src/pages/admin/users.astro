@@ -18,62 +18,73 @@ const error = Astro.url.searchParams.get('error');
 ---
 
 <AdminLayout>
-  <div class="max-w-5xl mx-auto">
-    <h1 class="text-2xl font-bold mb-4">Manage Users</h1>
-
+  <div class="p-4 max-w-5xl mx-auto">
     <!-- Toasts -->
     {added && <Toast id="addToast" message="User added successfully!" type="success" />}
     {updated && <Toast id="updateToast" message="User updated successfully!" type="success" />}
     {deleted && <Toast id="deleteToast" message="User deleted successfully!" type="success" />}
     {error && <Toast id="errorToast" message={error} type="error" duration={4000} />}
 
-    <!-- Add User Form -->
-    <div class="bg-white p-4 rounded shadow mb-6">
-      <h2 class="text-xl font-semibold mb-3">Add New User</h2>
-      <form id="addUserForm" class="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <input type="email" id="addEmail" placeholder="Email" required class="border p-2 rounded" />
-        <input type="password" id="addPassword" placeholder="Password" required class="border p-2 rounded" />
-        <select id="addRoleId" class="border p-2 rounded">
+    <!-- Add User Form (card) -->
+    <div class="bg-white dark:bg-ash-800 rounded-xl shadow-sm p-6 mb-6">
+      <h2 class="text-xl font-semibold mb-4 text-ash-800 dark:text-white">Add New User</h2>
+      <form id="addUserForm" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <input
+          type="email"
+          id="addEmail"
+          placeholder="Email"
+          required
+          class="border border-ash-300 dark:border-ash-600 rounded-lg px-3 py-2 dark:bg-ash-800 dark:text-white"
+        />
+        <input
+          type="password"
+          id="addPassword"
+          placeholder="Password"
+          required
+          class="border border-ash-300 dark:border-ash-600 rounded-lg px-3 py-2 dark:bg-ash-800 dark:text-white"
+        />
+        <select id="addRoleId" class="border border-ash-300 dark:border-ash-600 rounded-lg px-3 py-2 dark:bg-ash-800 dark:text-white">
           {roles.map(r => <option value={r.id}>{r.name}</option>)}
         </select>
-        <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded">Add User</button>
+        <button type="submit" class="bg-primary-500 text-white px-4 py-2 rounded-lg hover:bg-primary-600 transition">Add User</button>
       </form>
     </div>
 
-    <!-- Users Table -->
-    <div class="bg-white rounded shadow overflow-x-auto">
-      <table class="w-full min-w-[600px]">
-        <thead class="bg-gray-100">
+    <!-- Users Table (horizontal scroll) -->
+    <div class="bg-white dark:bg-ash-800 rounded-xl shadow-sm overflow-x-auto">
+      <table class="w-full">
+        <thead class="bg-ash-50 dark:bg-ash-700">
           <tr>
-            <th class="p-2">ID</th><th class="p-2">Email</th><th class="p-2">Role</th><th class="p-2">Actions</th>
+            <th class="p-3 text-left text-ash-700 dark:text-ash-200">ID</th>
+            <th class="p-3 text-left text-ash-700 dark:text-ash-200">Email</th>
+            <th class="p-3 text-left text-ash-700 dark:text-ash-200">Role</th>
+            <th class="p-3 text-center text-ash-700 dark:text-ash-200">Actions</th>
           </tr>
         </thead>
-        <tbody id="usersTableBody">
-          <tr><td colspan="4" class="p-2 text-center">Loading...</td></tr>
-        </tbody>
+        <tbody id="usersTableBody"></tbody>
       </table>
     </div>
   </div>
 
-  <!-- Edit Modal -->
-  <div id="editUserModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center z-50">
-    <div class="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
-      <h3 class="text-lg font-semibold mb-4">Edit User</h3>
-      <form id="editUserForm">
+  <!-- Edit User Modal (dark mode compatible) -->
+  <div id="editUserModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
+    <div class="bg-white dark:bg-ash-800 rounded-xl shadow-xl max-w-md w-full p-6">
+      <h3 class="text-lg font-semibold mb-4 text-ash-800 dark:text-white">Edit User</h3>
+      <form id="editUserForm" class="space-y-4">
         <input type="hidden" id="editUserId" />
-        <div class="mb-3">
-          <label class="block text-sm font-medium">Role</label>
-          <select id="editRoleId" class="border p-2 rounded w-full">
+        <div>
+          <label class="block text-sm font-medium text-ash-700 dark:text-ash-300 mb-1">Role</label>
+          <select id="editRoleId" class="w-full border border-ash-300 dark:border-ash-600 rounded-lg px-3 py-2 dark:bg-ash-800 dark:text-white">
             {roles.map(r => <option value={r.id}>{r.name}</option>)}
           </select>
         </div>
-        <div class="mb-3">
-          <label class="block text-sm font-medium">New Password (leave blank to keep unchanged)</label>
-          <input type="password" id="editNewPassword" class="border p-2 rounded w-full" />
+        <div>
+          <label class="block text-sm font-medium text-ash-700 dark:text-ash-300 mb-1">New Password (leave blank to keep unchanged)</label>
+          <input type="password" id="editNewPassword" class="w-full border border-ash-300 dark:border-ash-600 rounded-lg px-3 py-2 dark:bg-ash-800 dark:text-white" />
         </div>
-        <div class="flex justify-end gap-2">
-          <button type="button" id="closeEditModal" class="bg-gray-300 px-4 py-2 rounded">Cancel</button>
-          <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded">Save Changes</button>
+        <div class="flex justify-end gap-3 pt-2">
+          <button type="button" id="closeEditModal" class="bg-gray-400 dark:bg-ash-700 text-white px-4 py-2 rounded-lg hover:bg-gray-500 transition">Cancel</button>
+          <button type="submit" class="bg-primary-500 text-white px-4 py-2 rounded-lg hover:bg-primary-600 transition">Save Changes</button>
         </div>
       </form>
     </div>
@@ -83,7 +94,6 @@ const error = Astro.url.searchParams.get('error');
 
   <script define:vars={{ roles }}>
     let rolesData = roles;
-    let currentUser = null;
 
     async function loadUsers() {
       const res = await fetch('/api/admin/users');
@@ -94,19 +104,20 @@ const error = Astro.url.searchParams.get('error');
       }
       const users = await res.json();
       const tbody = document.getElementById('usersTableBody');
-      if (!tbody) return;
-      tbody.innerHTML = users.map(u => `
-        <tr class="border-t">
-          <td class="p-2">${u.id}<\/td>
-          <td class="p-2">${escapeHtml(u.email)}<\/td>
-          <td class="p-2">${escapeHtml(u.role_name)}<\/td>
-          <td class="p-2">
-            <button class="edit-user bg-blue-600 text-white px-2 py-1 rounded text-sm" data-id="${u.id}" data-role="${u.role_id}">Edit<\/button>
-            <button class="delete-user bg-red-600 text-white px-2 py-1 rounded text-sm" data-id="${u.id}" data-email="${escapeHtml(u.email)}">Del<\/button>
-          <\/td>
-        <\/tr>
-      `).join('');
-      attachButtons();
+      if (tbody) {
+        tbody.innerHTML = users.map(u => `
+          <tr class="border-t border-ash-200 dark:border-ash-700">
+            <td class="p-3 dark:text-ash-200">${u.id}</td>
+            <td class="p-3 dark:text-ash-200">${escapeHtml(u.email)}</td>
+            <td class="p-3 dark:text-ash-200">${escapeHtml(u.role_name)}</td>
+            <td class="p-3 text-center">
+              <button class="edit-user bg-primary-500 text-white px-2 py-1 rounded text-sm hover:bg-primary-600 transition" data-id="${u.id}" data-role="${u.role_id}">Edit</button>
+              <button class="delete-user bg-red-600 text-white px-2 py-1 rounded text-sm hover:bg-red-700 transition" data-id="${u.id}" data-email="${escapeHtml(u.email)}">Del</button>
+            </td>
+          </tr>
+        `).join('');
+        attachButtons();
+      }
     }
 
     function attachButtons() {
@@ -125,7 +136,7 @@ const error = Astro.url.searchParams.get('error');
         });
       });
       document.querySelectorAll('.delete-user').forEach(btn => {
-        btn.addEventListener('click', async (e) => {
+        btn.addEventListener('click', async () => {
           const id = btn.getAttribute('data-id');
           const email = btn.getAttribute('data-email');
           const confirmed = await window.showConfirmModal({
@@ -147,51 +158,62 @@ const error = Astro.url.searchParams.get('error');
       });
     }
 
-    function escapeHtml(str) { return str.replace(/[&<>]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[m])); }
+    function escapeHtml(str) {
+      return str.replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m]));
+    }
 
-    document.getElementById('addUserForm')?.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const email = document.getElementById('addEmail').value;
-      const password = document.getElementById('addPassword').value;
-      const roleId = document.getElementById('addRoleId').value;
-      const formData = new FormData();
-      formData.append('email', email);
-      formData.append('password', password);
-      formData.append('roleId', roleId);
-      const res = await fetch('/api/admin/create-user', { method: 'POST', body: formData });
-      if (res.ok) {
-        window.location.href = '/admin/users?added=1';
-      } else {
-        const err = await res.text();
-        alert(err);
-      }
-    });
+    const addForm = document.getElementById('addUserForm');
+    if (addForm) {
+      addForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = document.getElementById('addEmail').value;
+        const password = document.getElementById('addPassword').value;
+        const roleId = document.getElementById('addRoleId').value;
+        const formData = new FormData();
+        formData.append('email', email);
+        formData.append('password', password);
+        formData.append('roleId', roleId);
+        const res = await fetch('/api/admin/create-user', { method: 'POST', body: formData });
+        if (res.ok) {
+          window.location.href = '/admin/users?added=1';
+        } else {
+          const err = await res.text();
+          alert(err);
+        }
+      });
+    }
 
-    document.getElementById('editUserForm')?.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const id = document.getElementById('editUserId').value;
-      const roleId = document.getElementById('editRoleId').value;
-      const newPassword = document.getElementById('editNewPassword').value;
-      const formData = new FormData();
-      formData.append('id', id);
-      formData.append('roleId', roleId);
-      if (newPassword) formData.append('newPassword', newPassword);
-      const res = await fetch('/api/admin/update-user', { method: 'POST', body: formData });
-      if (res.ok) {
-        window.location.href = '/admin/users?updated=1';
-      } else {
-        const err = await res.text();
-        alert(err);
-      }
-    });
+    const editForm = document.getElementById('editUserForm');
+    if (editForm) {
+      editForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const id = document.getElementById('editUserId').value;
+        const roleId = document.getElementById('editRoleId').value;
+        const newPassword = document.getElementById('editNewPassword').value;
+        const formData = new FormData();
+        formData.append('id', id);
+        formData.append('roleId', roleId);
+        if (newPassword) formData.append('newPassword', newPassword);
+        const res = await fetch('/api/admin/update-user', { method: 'POST', body: formData });
+        if (res.ok) {
+          window.location.href = '/admin/users?updated=1';
+        } else {
+          const err = await res.text();
+          alert(err);
+        }
+      });
+    }
 
-    document.getElementById('closeEditModal')?.addEventListener('click', () => {
-      const modal = document.getElementById('editUserModal');
-      if (modal) {
-        modal.classList.remove('flex');
-        modal.classList.add('hidden');
-      }
-    });
+    const closeModalBtn = document.getElementById('closeEditModal');
+    if (closeModalBtn) {
+      closeModalBtn.addEventListener('click', () => {
+        const modal = document.getElementById('editUserModal');
+        if (modal) {
+          modal.classList.remove('flex');
+          modal.classList.add('hidden');
+        }
+      });
+    }
 
     window.addEventListener('click', (e) => {
       const modal = document.getElementById('editUserModal');

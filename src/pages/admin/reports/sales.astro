@@ -9,26 +9,35 @@ if (!permissions?.includes('sales.view')) {
 ---
 
 <AdminLayout>
-  <div class="p-4 max-w-6xl mx-auto">
-    <h1 class="text-2xl font-bold mb-4">Sales History</h1>
-    <div class="mb-4 flex gap-2">
-      <input type="date" id="fromDate" class="border p-2 rounded" />
-      <input type="date" id="toDate" class="border p-2 rounded" />
-      <button id="filterBtn" class="bg-blue-600 text-white px-4 py-2 rounded">Filter</button>
-      <button id="exportBtn" class="bg-green-600 text-white px-4 py-2 rounded">Export CSV</button>
+  <div class="p-4">
+    <!-- Filter controls -->
+    <div class="bg-white dark:bg-ash-800 rounded-xl shadow-sm p-4 mb-6">
+      <div class="flex flex-wrap gap-2 items-end">
+        <div>
+          <label class="block text-sm font-medium text-ash-700 dark:text-ash-300 mb-1">From Date</label>
+          <input type="date" id="fromDate" class="border border-ash-300 dark:border-ash-600 rounded-lg px-3 py-2 dark:bg-ash-800 dark:text-white" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-ash-700 dark:text-ash-300 mb-1">To Date</label>
+          <input type="date" id="toDate" class="border border-ash-300 dark:border-ash-600 rounded-lg px-3 py-2 dark:bg-ash-800 dark:text-white" />
+        </div>
+        <button id="filterBtn" class="bg-primary-500 text-white px-4 py-2 rounded-lg hover:bg-primary-600 transition">Filter</button>
+        <button id="exportBtn" class="bg-secondary-500 text-white px-4 py-2 rounded-lg hover:bg-secondary-600 transition">Export CSV</button>
+      </div>
     </div>
 
-    <div class="bg-white rounded shadow overflow-x-auto">
-      <table class="w-full min-w-[800px]">
-        <thead class="bg-gray-100">
+    <!-- Sales table (horizontal scroll) -->
+    <div class="bg-white dark:bg-ash-800 rounded-xl shadow-sm overflow-x-auto">
+      <table class="w-full">
+        <thead class="bg-ash-50 dark:bg-ash-700">
           <tr>
-            <th class="p-2">Sale ID</th>
-            <th class="p-2">Date</th>
-            <th class="p-2">Total (pre-discount)</th>
-            <th class="p-2">Discount</th>
-            <th class="p-2">Final Amount</th>
-            <th class="p-2">Items</th>
-            <th class="p-2">Details</th>
+            <th class="p-3 text-left text-ash-700 dark:text-ash-200">Sale ID</th>
+            <th class="p-3 text-left text-ash-700 dark:text-ash-200">Date</th>
+            <th class="p-3 text-left text-ash-700 dark:text-ash-200">Total (pre‑discount)</th>
+            <th class="p-3 text-left text-ash-700 dark:text-ash-200">Discount</th>
+            <th class="p-3 text-left text-ash-700 dark:text-ash-200">Final Amount</th>
+            <th class="p-3 text-left text-ash-700 dark:text-ash-200">Items</th>
+            <th class="p-3 text-left text-ash-700 dark:text-ash-200">Details</th>
           </tr>
         </thead>
         <tbody id="salesTableBody"></tbody>
@@ -36,13 +45,13 @@ if (!permissions?.includes('sales.view')) {
     </div>
   </div>
 
-  <!-- Modal for sale details -->
-  <div id="detailsModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center z-50">
-    <div class="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
-      <h3 class="text-lg font-semibold mb-4">Sale Details</h3>
-      <div id="detailsContent"></div>
+  <!-- Modal for sale details (dark mode compatible) -->
+  <div id="detailsModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
+    <div class="bg-white dark:bg-ash-800 rounded-xl shadow-xl max-w-md w-full p-6">
+      <h3 class="text-lg font-semibold mb-4 text-ash-800 dark:text-white">Sale Details</h3>
+      <div id="detailsContent" class="text-ash-700 dark:text-ash-200"></div>
       <div class="mt-4 flex justify-end">
-        <button id="closeModal" class="bg-gray-300 px-4 py-2 rounded">Close</button>
+        <button id="closeModal" class="bg-gray-400 dark:bg-ash-700 text-white px-4 py-2 rounded-lg hover:bg-gray-500 transition">Close</button>
       </div>
     </div>
   </div>
@@ -51,50 +60,69 @@ if (!permissions?.includes('sales.view')) {
     let currentData = null;
 
     async function fetchSales(from, to) {
-      const params = new URLSearchParams();
-      if (from) params.append('from', from);
-      if (to) params.append('to', to);
-      const res = await fetch(`/api/sales-history?${params.toString()}`);
-      const data = await res.json();
-      currentData = data;
-      const tbody = document.getElementById('salesTableBody');
-      tbody.innerHTML = data.map(s => `
-        <tr class="border-t">
-          <td class="p-2">${s.id}</td>
-          <td class="p-2">${new Date(s.completed_at).toLocaleString()}</td>
-          <td class="p-2">${s.total_amount.toFixed(0)}</td>
-          <td class="p-2">${s.discount_type === 'percentage' ? s.discount_value + '%' : (s.discount_value ? s.discount_value.toFixed(0) + ' Tsh' : 'None')}</td>
-          <td class="p-2">${s.final_amount.toFixed(0)}</td>
-          <td class="p-2">${s.item_count}</td>
-          <td class="p-2"><button class="view-details bg-blue-600 text-white px-2 py-1 rounded text-sm" data-id="${s.id}">View</button></td>
-        </tr>
-      `).join('');
-      attachViewHandlers();
+      try {
+        const params = new URLSearchParams();
+        if (from) params.append('from', from);
+        if (to) params.append('to', to);
+        const res = await fetch(`/api/sales-history?${params.toString()}`);
+        const data = await res.json();
+        currentData = data;
+        const tbody = document.getElementById('salesTableBody');
+        if (tbody) {
+          tbody.innerHTML = data.map(s => `
+            <tr class="border-t border-ash-200 dark:border-ash-700">
+              <td class="p-3 dark:text-ash-200">${s.id}</td>
+              <td class="p-3 dark:text-ash-200">${new Date(s.completed_at).toLocaleString()}</td>
+              <td class="p-3 dark:text-ash-200">${s.total_amount.toFixed(0)}</td>
+              <td class="p-3 dark:text-ash-200">${s.discount_type === 'percentage' ? s.discount_value + '%' : (s.discount_value ? s.discount_value.toFixed(0) + ' Tsh' : 'None')}</td>
+              <td class="p-3 dark:text-ash-200">${s.final_amount.toFixed(0)}</td>
+              <td class="p-3 dark:text-ash-200">${s.item_count}</td>
+              <td class="p-3"><button class="view-details bg-primary-500 text-white px-2 py-1 rounded text-sm" data-id="${s.id}">View</button></td>
+            </tr>
+          `).join('');
+          attachViewHandlers();
+        }
+      } catch(e) { console.error(e); }
     }
 
     async function viewSaleDetails(id) {
-      const res = await fetch(`/api/sale-items?basketId=${id}`);
-      const items = await res.json();
-      const modal = document.getElementById('detailsModal');
-      const content = document.getElementById('detailsContent');
-      content.innerHTML = `
-        <table class="w-full text-sm">
-          <thead><tr><th>Product</th><th>Qty</th><th>Unit Price</th><th>Total</th></tr></thead>
-          <tbody>
-            ${items.map(i => `
-              <tr><td>${i.product_name}</td><td>${i.quantity}</td><td>${i.unit_price}</td><td>${i.total_price}</td></tr>
-            `).join('')}
-          </tbody>
-        </table>
-      `;
-      modal.classList.remove('hidden');
-      modal.classList.add('flex');
+      try {
+        const res = await fetch(`/api/sale-items?basketId=${id}`);
+        const items = await res.json();
+        const modal = document.getElementById('detailsModal');
+        const content = document.getElementById('detailsContent');
+        if (modal && content) {
+          content.innerHTML = `
+            <table class="w-full text-sm">
+              <thead>
+                <tr><th class="text-left">Product</th><th class="text-left">Qty</th><th class="text-left">Unit Price</th><th class="text-left">Total</th></tr>
+              </thead>
+              <tbody>
+                ${items.map(i => `
+                  <tr class="border-t border-ash-200 dark:border-ash-700">
+                    <td class="py-1">${escapeHtml(i.product_name)}</td>
+                    <td class="py-1">${i.quantity}</td>
+                    <td class="py-1">${i.unit_price}</td>
+                    <td class="py-1">${i.total_price}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          `;
+          modal.classList.remove('hidden');
+          modal.classList.add('flex');
+        }
+      } catch(e) { console.error(e); }
     }
 
     function attachViewHandlers() {
       document.querySelectorAll('.view-details').forEach(btn => {
-        btn.addEventListener('click', () => viewSaleDetails(btn.dataset.id));
+        btn.addEventListener('click', () => viewSaleDetails(btn.getAttribute('data-id')));
       });
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m]));
     }
 
     const fromInput = document.getElementById('fromDate');
@@ -104,41 +132,48 @@ if (!permissions?.includes('sales.view')) {
     const closeModalBtn = document.getElementById('closeModal');
     const modal = document.getElementById('detailsModal');
 
-    closeModalBtn.addEventListener('click', () => {
-      modal.classList.remove('flex');
-      modal.classList.add('hidden');
-    });
-    window.addEventListener('click', (e) => {
-      if (e.target === modal) {
+    if (closeModalBtn && modal) {
+      closeModalBtn.addEventListener('click', () => {
         modal.classList.remove('flex');
         modal.classList.add('hidden');
-      }
-    });
+      });
+      window.addEventListener('click', (e) => {
+        if (e.target === modal) {
+          modal.classList.remove('flex');
+          modal.classList.add('hidden');
+        }
+      });
+    }
 
-    // Default: last 30 days
-    const today = new Date();
-    const monthAgo = new Date(); monthAgo.setDate(today.getDate() - 30);
-    fromInput.value = monthAgo.toISOString().slice(0,10);
-    toInput.value = today.toISOString().slice(0,10);
-    fetchSales(fromInput.value, toInput.value);
-
-    filterBtn.addEventListener('click', () => {
+    // Default to last 30 days
+    if (fromInput && toInput) {
+      const today = new Date();
+      const monthAgo = new Date();
+      monthAgo.setDate(today.getDate() - 30);
+      fromInput.value = monthAgo.toISOString().slice(0,10);
+      toInput.value = today.toISOString().slice(0,10);
       fetchSales(fromInput.value, toInput.value);
-    });
+    }
 
-    exportBtn.addEventListener('click', () => {
-      if (!currentData) return;
-      const csv = [
-        ['Sale ID', 'Date', 'Total', 'Discount', 'Final Amount', 'Items'],
-        ...currentData.map(s => [s.id, new Date(s.completed_at).toLocaleString(), s.total_amount, s.discount_value ? (s.discount_type === 'percentage' ? s.discount_value + '%' : s.discount_value + ' Tsh') : 'None', s.final_amount, s.item_count])
-      ].map(row => row.join(',')).join('\n');
-      const blob = new Blob([csv], { type: 'text/csv' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `sales-${new Date().toISOString().slice(0,10)}.csv`;
-      a.click();
-      URL.revokeObjectURL(url);
-    });
+    if (filterBtn && fromInput && toInput) {
+      filterBtn.addEventListener('click', () => fetchSales(fromInput.value, toInput.value));
+    }
+
+    if (exportBtn) {
+      exportBtn.addEventListener('click', () => {
+        if (!currentData) return;
+        const csv = [
+          ['Sale ID', 'Date', 'Total', 'Discount', 'Final Amount', 'Items'],
+          ...currentData.map(s => [s.id, new Date(s.completed_at).toLocaleString(), s.total_amount, s.discount_value ? (s.discount_type === 'percentage' ? s.discount_value + '%' : s.discount_value + ' Tsh') : 'None', s.final_amount, s.item_count])
+        ].map(row => row.join(',')).join('\n');
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `sales-${new Date().toISOString().slice(0,10)}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+      });
+    }
   </script>
 </AdminLayout>

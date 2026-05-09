@@ -1,0 +1,95 @@
+---
+const { categories = [], suppliers = [] } = Astro.props;
+---
+
+<div id="editProductModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
+  <div class="bg-white dark:bg-ash-800 rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto p-6">
+    <h2 class="text-xl font-semibold mb-4 text-ash-800 dark:text-white">Edit Product</h2>
+    <form id="editProductForm" method="post" action="/api/update-product" class="space-y-4">
+      <input type="hidden" name="id" id="editProductId" />
+      <!-- all fields same as before -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <input type="text" name="name" id="editName" placeholder="Product name" required class="w-full border border-ash-300 dark:border-ash-600 rounded-lg px-3 py-2 dark:bg-ash-800 dark:text-white" />
+        <input type="text" name="sku" id="editSku" placeholder="SKU" required class="w-full border border-ash-300 dark:border-ash-600 rounded-lg px-3 py-2 dark:bg-ash-800 dark:text-white" />
+        <input type="text" name="barcode" id="editBarcode" placeholder="Barcode" class="w-full border border-ash-300 dark:border-ash-600 rounded-lg px-3 py-2 dark:bg-ash-800 dark:text-white" />
+        <input type="number" step="0.01" name="price" id="editPrice" placeholder="Selling price" required class="w-full border border-ash-300 dark:border-ash-600 rounded-lg px-3 py-2 dark:bg-ash-800 dark:text-white" />
+        <input type="number" step="0.01" name="costPrice" id="editCostPrice" placeholder="Cost price" class="w-full border border-ash-300 dark:border-ash-600 rounded-lg px-3 py-2 dark:bg-ash-800 dark:text-white" />
+        <input type="number" step="0.01" name="stock" id="editStock" placeholder="Stock" class="w-full border border-ash-300 dark:border-ash-600 rounded-lg px-3 py-2 dark:bg-ash-800 dark:text-white" />
+        <input type="number" step="1" name="minStock" id="editMinStock" placeholder="Min stock alert" class="w-full border border-ash-300 dark:border-ash-600 rounded-lg px-3 py-2 dark:bg-ash-800 dark:text-white" />
+        <select name="unit" id="editUnit" class="w-full border border-ash-300 dark:border-ash-600 rounded-lg px-3 py-2 dark:bg-ash-800 dark:text-white">
+          <option value="piece">piece</option><option value="kg">kg</option><option value="g">g</option><option value="L">L</option><option value="ml">ml</option>
+        </select>
+        <input type="text" name="bulkUnit" id="editBulkUnit" placeholder="Bulk unit" class="w-full border border-ash-300 dark:border-ash-600 rounded-lg px-3 py-2 dark:bg-ash-800 dark:text-white" />
+        <input type="number" step="0.01" name="bulkFactor" id="editBulkFactor" placeholder="Bulk factor" class="w-full border border-ash-300 dark:border-ash-600 rounded-lg px-3 py-2 dark:bg-ash-800 dark:text-white" />
+        <select name="categoryId" id="editCategoryId" class="w-full border border-ash-300 dark:border-ash-600 rounded-lg px-3 py-2 dark:bg-ash-800 dark:text-white">
+          <option value="">Select category</option>
+          {categories.map((c: any) => <option value={c.id}>{c.name}</option>)}
+        </select>
+        <select name="supplierId" id="editSupplierId" class="w-full border border-ash-300 dark:border-ash-600 rounded-lg px-3 py-2 dark:bg-ash-800 dark:text-white">
+          <option value="">Select supplier</option>
+          {suppliers.map((s: any) => <option value={s.id}>{s.name}</option>)}
+        </select>
+        <input type="text" name="imageUrl" id="editImageUrl" placeholder="Image URL" class="w-full border border-ash-300 dark:border-ash-600 rounded-lg px-3 py-2 dark:bg-ash-800 dark:text-white" />
+        <input type="hidden" name="active" value="1" />
+      </div>
+      <div class="flex gap-4 items-center flex-wrap">
+        <label class="flex items-center gap-2">
+          <input type="checkbox" name="onPromotion" value="1" id="editOnPromotion" class="w-5 h-5" />
+          <span class="text-ash-700 dark:text-ash-300">On Promotion</span>
+        </label>
+        <input type="number" step="0.01" name="promoPrice" id="editPromoPrice" placeholder="Promotional price" class="border border-ash-300 dark:border-ash-600 rounded-lg px-3 py-2 dark:bg-ash-800 dark:text-white w-48" />
+      </div>
+      <div class="flex justify-end gap-3">
+        <button type="button" id="closeEditModal" class="bg-gray-400 text-white px-4 py-2 rounded-lg">Cancel</button>
+        <button type="submit" class="bg-primary-500 text-white px-4 py-2 rounded-lg">Save Changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script lang="js">
+  // Define the function globally
+  window.showEditProductModal = function(product) {
+    document.getElementById('editProductId').value = product.id;
+    document.getElementById('editName').value = product.name;
+    document.getElementById('editSku').value = product.sku;
+    document.getElementById('editBarcode').value = product.barcode || '';
+    document.getElementById('editPrice').value = product.price;
+    document.getElementById('editCostPrice').value = product.cost_price || '';
+    document.getElementById('editStock').value = product.stock;
+    document.getElementById('editMinStock').value = product.min_stock || 5;
+    document.getElementById('editUnit').value = product.unit || 'piece';
+    document.getElementById('editBulkUnit').value = product.bulk_unit || '';
+    document.getElementById('editBulkFactor').value = product.bulk_factor || 1;
+    document.getElementById('editCategoryId').value = product.category_id || '';
+    document.getElementById('editSupplierId').value = product.supplier_id || '';
+    document.getElementById('editImageUrl').value = product.image_url || '';
+    document.getElementById('editOnPromotion').checked = product.on_promotion === 1;
+    document.getElementById('editPromoPrice').value = product.promo_price || '';
+    const modal = document.getElementById('editProductModal');
+    if (modal) {
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+  };
+  // Close modal handlers
+  const modalEl = document.getElementById('editProductModal');
+  const closeBtn = document.getElementById('closeEditModal');
+  if (closeBtn) {
+    closeBtn.addEventListener('click', () => {
+      if (modalEl) {
+        modalEl.classList.remove('flex');
+        modalEl.classList.add('hidden');
+      }
+    });
+  }
+  if (modalEl) {
+    modalEl.addEventListener('click', (e) => {
+      if (e.target === modalEl) {
+        modalEl.classList.remove('flex');
+        modalEl.classList.add('hidden');
+      }
+    });
+  }
+  // Optional: if you want to reload after form submission (default action already redirects)
+</script>

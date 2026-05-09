@@ -25,7 +25,7 @@ else if (path.includes('/reports/sales')) pageTitle = t('sales_history');
 <Layout>
   <div class="flex min-h-screen bg-ash-50 dark:bg-ash-900">
     <Sidebar />
-    <div class="flex-1 md:ml-64">
+    <div class="flex-1 min-w-0 md:ml-64">
       <TopBar title={pageTitle} />
       <main class="p-4 md:p-6">
         <slot />

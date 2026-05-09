@@ -10,7 +10,7 @@ if (!permissions?.includes("sales.create")) {
   return Astro.redirect("/admin/dashboard");
 }
 
-// Fetch all active products for dropdown (include unit only, bulk fields not needed now)
+// Fetch all active products (only needed fields)
 const products = rawDb
   .prepare(
     "SELECT id, name, price, stock, unit FROM products WHERE active = 1 ORDER BY name"
@@ -25,9 +25,8 @@ const products = rawDb
 ---
 
 <AdminLayout>
-  <div class="max-w-4xl mx-auto">
-    <h1 class="text-2xl font-bold mb-4">New Sale (Multi-Product)</h1>
-
+  <div class="p-4 max-w-4xl mx-auto">
+    <!-- Success toast -->
     {success && (
       <div
         id="toast"
@@ -37,12 +36,12 @@ const products = rawDb
       </div>
     )}
 
-    <!-- Product selector with quantity and unit -->
-    <div class="bg-white p-4 rounded shadow mb-4">
-      <div class="flex gap-2 items-end">
-        <div class="flex-1">
-          <label class="block font-semibold mb-1">Product</label>
-          <select id="productSelect" class="w-full border p-2 rounded">
+    <!-- Product selector card -->
+    <div class="bg-white dark:bg-ash-800 rounded-xl shadow-sm p-4 mb-6">
+      <div class="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
+        <div class="md:col-span-2">
+          <label class="block font-medium text-ash-700 dark:text-ash-300 mb-1">Product</label>
+          <select id="productSelect" class="w-full border border-ash-300 dark:border-ash-600 rounded-lg px-3 py-2 dark:bg-ash-800 dark:text-white">
             <option value="">Select product</option>
             {products.map((p) => (
               <option value={p.id} data-price={p.price} data-stock={p.stock}>
@@ -51,107 +50,93 @@ const products = rawDb
             ))}
           </select>
         </div>
-        <div class="w-24">
-          <label class="block font-semibold mb-1">Qty</label>
+        <div>
+          <label class="block font-medium text-ash-700 dark:text-ash-300 mb-1">Qty</label>
           <input
             type="number"
             id="quantity"
             value="1"
             min="1"
-            class="border p-2 rounded w-full"
+            class="w-full border border-ash-300 dark:border-ash-600 rounded-lg px-3 py-2 dark:bg-ash-800 dark:text-white"
           />
         </div>
-        <div class="w-32">
-          <label class="block font-semibold mb-1">Unit</label>
-          <select id="unitSelect" class="border p-2 rounded w-full">
+        <div>
+          <label class="block font-medium text-ash-700 dark:text-ash-300 mb-1">Unit</label>
+          <select id="unitSelect" class="w-full border border-ash-300 dark:border-ash-600 rounded-lg px-3 py-2 dark:bg-ash-800 dark:text-white">
             <option value="base">piece</option>
           </select>
         </div>
-        <button id="addBtn" class="bg-blue-600 text-white px-4 py-2 rounded"
-          >Add</button
-        >
+        <button id="addBtn" class="bg-primary-500 text-white px-4 py-2 rounded-lg hover:bg-primary-600 transition">Add</button>
       </div>
     </div>
 
-    <!-- Manual barcode / SKU input (fallback) + scanner button -->
-    <div class="flex gap-2 items-center mb-4">
-      <div class="flex-1">
-        <label class="block font-semibold mb-1">Or enter SKU / Barcode</label>
-        <input
-          type="text"
-          id="barcodeInput"
-          placeholder="Type SKU or barcode"
-          class="border p-2 rounded w-full"
-        />
+    <!-- Barcode / SKU manual entry + scanner -->
+    <div class="bg-white dark:bg-ash-800 rounded-xl shadow-sm p-4 mb-6">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+        <div class="md:col-span-1">
+          <label class="block font-medium text-ash-700 dark:text-ash-300 mb-1">SKU / Barcode</label>
+          <input
+            type="text"
+            id="barcodeInput"
+            placeholder="Type or scan"
+            class="w-full border border-ash-300 dark:border-ash-600 rounded-lg px-3 py-2 dark:bg-ash-800 dark:text-white"
+          />
+        </div>
+        <button id="addByCodeBtn" class="bg-primary-500 text-white px-4 py-2 rounded-lg hover:bg-primary-600 transition">Add by Code</button>
+        <button id="scanBarcodeBtn" class="bg-secondary-500 text-white px-4 py-2 rounded-lg hover:bg-secondary-600 transition">Scan Barcode</button>
       </div>
-      <button
-        id="addByCodeBtn"
-        class="bg-blue-600 text-white px-4 py-2 rounded"
-        style="margin-top: 1.5rem;"
-        >Add by Code</button
-      >
-      <button
-        type="button"
-        id="scanBarcodeBtn"
-        class="bg-purple-600 text-white px-4 py-2 rounded"
-        style="margin-top: 1.5rem;"
-        >Scan Barcode</button
-      >
     </div>
 
-    <!-- Basket table -->
-    <div class="bg-white rounded shadow overflow-x-auto">
+    <!-- Basket table (horizontal scroll) -->
+    <div class="bg-white dark:bg-ash-800 rounded-xl shadow-sm overflow-x-auto mb-6">
       <table class="w-full">
-        <thead class="bg-gray-100">
+        <thead class="bg-ash-50 dark:bg-ash-700">
           <tr>
-            <th class="p-2 text-left">Product</th>
-            <th class="p-2 text-left">Qty</th>
-            <th class="p-2 text-left">Unit Price</th>
-            <th class="p-2 text-left">Total</th>
-            <th class="p-2"></th>
+            <th class="p-3 text-left text-ash-700 dark:text-ash-200">Product</th>
+            <th class="p-3 text-left text-ash-700 dark:text-ash-200">Qty</th>
+            <th class="p-3 text-left text-ash-700 dark:text-ash-200">Unit Price</th>
+            <th class="p-3 text-left text-ash-700 dark:text-ash-200">Total</th>
+            <th class="p-3 text-center text-ash-700 dark:text-ash-200"></th>
           </tr>
         </thead>
         <tbody id="basketBody"></tbody>
-        <tfoot>
-          <tr class="border-t font-bold">
-            <td colspan="3" class="p-2 text-right">Subtotal:</td>
-            <td class="p-2" id="subtotal">0</td>
+        <tfoot class="border-t border-ash-200 dark:border-ash-700">
+          <tr class="font-bold">
+            <td colspan="3" class="p-3 text-right text-ash-700 dark:text-ash-200">Subtotal:</td>
+            <td class="p-3 text-ash-800 dark:text-white" id="subtotal">0</td>
             <td></td>
           </tr>
           <tr>
-            <td colspan="3" class="p-2 text-right">Discount:</td>
-            <td class="p-2">
-              <select id="discountType" class="border p-1 text-sm">
-                <option value="percentage">%</option>
-                <option value="fixed">Tsh</option>
-              </select>
-              <input
-                type="number"
-                id="discountValue"
-                value="0"
-                min="0"
-                class="border p-1 w-24 text-sm"
-              />
+            <td colspan="3" class="p-3 text-right text-ash-700 dark:text-ash-200">Discount:</td>
+            <td class="p-3">
+              <div class="flex gap-2">
+                <select id="discountType" class="border border-ash-300 dark:border-ash-600 rounded px-2 py-1 text-sm dark:bg-ash-800 dark:text-white">
+                  <option value="percentage">%</option>
+                  <option value="fixed">Tsh</option>
+                </select>
+                <input
+                  type="number"
+                  id="discountValue"
+                  value="0"
+                  min="0"
+                  class="w-24 border border-ash-300 dark:border-ash-600 rounded px-2 py-1 text-sm dark:bg-ash-800 dark:text-white"
+                />
+              </div>
             </td>
             <td></td>
           </tr>
-          <tr class="border-t font-bold text-lg">
-            <td colspan="3" class="p-2 text-right">Final Total:</td>
-            <td class="p-2" id="finalTotal">0</td>
+          <tr class="font-bold text-lg">
+            <td colspan="3" class="p-3 text-right text-ash-700 dark:text-ash-200">Final Total:</td>
+            <td class="p-3 text-primary-600 dark:text-primary-400" id="finalTotal">0</td>
             <td></td>
           </tr>
         </tfoot>
+      </table>
     </div>
 
-    <div class="mt-4 flex gap-2">
-      <button
-        id="completeSaleBtn"
-        class="bg-green-600 text-white px-6 py-2 rounded"
-        >Complete Sale</button
-      >
-      <a href="/admin/products" class="bg-gray-600 text-white px-4 py-2 rounded"
-        >Cancel</a
-      >
+    <div class="flex gap-3">
+      <button id="completeSaleBtn" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition">Complete Sale</button>
+      <a href="/admin/products" class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition">Cancel</a>
     </div>
   </div>
 
@@ -159,7 +144,6 @@ const products = rawDb
     let basket = [];
     const productsData = products;
 
-    // DOM elements
     const productSelect = document.getElementById("productSelect");
     const quantityInput = document.getElementById("quantity");
     const unitSelect = document.getElementById("unitSelect");
@@ -174,12 +158,10 @@ const products = rawDb
     const addByCodeBtn = document.getElementById("addByCodeBtn");
     const scanBarcodeBtn = document.getElementById("scanBarcodeBtn");
 
-    // Unit conversion variables
     let currentUnit = "piece";
     let currentBulkUnit = null;
     let currentBulkFactor = 1;
 
-    // Auto-hide success toast
     const toast = document.getElementById("toast");
     if (toast) {
       setTimeout(() => {
@@ -188,7 +170,6 @@ const products = rawDb
       }, 3000);
     }
 
-    // Fetch product units from API
     async function loadProductUnits(productId) {
       if (!productId) return;
       const res = await fetch(`/api/product-unit?id=${productId}`);
@@ -197,33 +178,25 @@ const products = rawDb
         currentUnit = data.unit || "piece";
         currentBulkUnit = data.bulkUnit;
         currentBulkFactor = data.bulkFactor || 1;
-        // Populate unit dropdown
         unitSelect.innerHTML = `<option value="base">${currentUnit}</option>`;
-        if (currentBulkUnit) {
-          unitSelect.innerHTML += `<option value="bulk">${currentBulkUnit}</option>`;
-        }
+        if (currentBulkUnit) unitSelect.innerHTML += `<option value="bulk">${currentBulkUnit}</option>`;
       } else {
-        // Fallback
         unitSelect.innerHTML = `<option value="base">piece</option>`;
       }
     }
 
-    // Helper: add product to basket (quantity is already in base units)
     function addProductToBasket(productId, name, unitPrice, qty) {
-      const product = productsData.find((p) => p.id === productId);
+      const product = productsData.find(p => p.id === productId);
       if (!product) return false;
       if (qty > product.stock) {
         window.showToast(`Only ${product.stock} in stock`, "error");
         return false;
       }
-      const existing = basket.find((item) => item.productId === productId);
+      const existing = basket.find(item => item.productId === productId);
       if (existing) {
         const newQty = existing.qty + qty;
         if (newQty > product.stock) {
-          window.showToast(
-            `Cannot add. Stock would exceed ${product.stock}`,
-            "error"
-          );
+          window.showToast(`Cannot add. Stock would exceed ${product.stock}`, "error");
           return false;
         }
         existing.qty = newQty;
@@ -260,15 +233,13 @@ const products = rawDb
       basketBody.innerHTML = "";
       basket.forEach((item, idx) => {
         const row = document.createElement("tr");
-        row.className = "border-t";
+        row.className = "border-t border-ash-200 dark:border-ash-700";
         row.innerHTML = `
-          <td class="p-2">${escapeHtml(item.name)}</td>
-          <td class="p-2">
-            <input type="number" class="qty-change w-16 border p-1 text-sm" data-idx="${idx}" value="${item.qty}" min="1" step="1" />
-          </td>
-          <td class="p-2">${item.unitPrice}</td>
-          <td class="p-2">${(item.qty * item.unitPrice).toFixed(0)}</td>
-          <td class="p-2"><button class="remove-item text-red-600" data-idx="${idx}">X</button></td>
+          <td class="p-3 dark:text-ash-200">${escapeHtml(item.name)}</td>
+          <td class="p-3"><input type="number" class="qty-change w-20 border border-ash-300 dark:border-ash-600 rounded px-2 py-1 text-sm dark:bg-ash-800 dark:text-white" data-idx="${idx}" value="${item.qty}" min="1" step="1" /></td>
+          <td class="p-3 dark:text-ash-200">${item.unitPrice}</td>
+          <td class="p-3 dark:text-ash-200">${(item.qty * item.unitPrice).toFixed(0)}</td>
+          <td class="p-3 text-center"><button class="remove-item text-red-600 hover:text-red-800 transition" data-idx="${idx}">✕</button></td>
         `;
         basketBody.appendChild(row);
       });
@@ -277,11 +248,11 @@ const products = rawDb
     }
 
     function attachBasketEvents() {
-      document.querySelectorAll(".qty-change").forEach((input) => {
+      document.querySelectorAll(".qty-change").forEach(input => {
         input.removeEventListener("change", handleQtyChange);
         input.addEventListener("change", handleQtyChange);
       });
-      document.querySelectorAll(".remove-item").forEach((btn) => {
+      document.querySelectorAll(".remove-item").forEach(btn => {
         btn.removeEventListener("click", handleRemove);
         btn.addEventListener("click", handleRemove);
       });
@@ -292,7 +263,7 @@ const products = rawDb
       const idx = parseInt(target.dataset.idx);
       const newQty = parseInt(target.value);
       if (!isNaN(newQty) && newQty > 0 && basket[idx]) {
-        const product = productsData.find((p) => p.id === basket[idx].productId);
+        const product = productsData.find(p => p.id === basket[idx].productId);
         if (product && newQty > product.stock) {
           window.showToast(`Only ${product.stock} in stock`, "error");
           target.value = basket[idx].qty;
@@ -311,33 +282,23 @@ const products = rawDb
     }
 
     function escapeHtml(str) {
-      return str.replace(/[&<>]/g, function (m) {
-        if (m === "&") return "&amp;";
-        if (m === "<") return "&lt;";
-        if (m === ">") return "&gt;";
-        return m;
-      });
+      return str.replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m]));
     }
 
-    // When product dropdown changes, load unit info
     productSelect.addEventListener("change", () => {
       const productId = productSelect.value;
       if (productId) loadProductUnits(productId);
-      else {
-        unitSelect.innerHTML = `<option value="base">piece</option>`;
-      }
+      else unitSelect.innerHTML = `<option value="base">piece</option>`;
     });
 
-    // Add product from dropdown with unit conversion
     if (addBtn && productSelect && quantityInput) {
       addBtn.addEventListener("click", () => {
         const productId = parseInt(productSelect.value);
         if (!productId) return;
-        const product = productsData.find((p) => p.id === productId);
+        const product = productsData.find(p => p.id === productId);
         if (!product) return;
         let rawQty = quantityInput ? parseFloat(quantityInput.value) : 1;
         if (isNaN(rawQty) || rawQty < 1) rawQty = 1;
-        // Convert to base quantity based on selected unit
         const selectedUnit = unitSelect.value;
         let baseQty = rawQty;
         if (selectedUnit === "bulk" && currentBulkUnit && currentBulkFactor > 0) {
@@ -350,19 +311,14 @@ const products = rawDb
       });
     }
 
-    // Manual entry (by code)
     if (addByCodeBtn && barcodeInput) {
       addByCodeBtn.addEventListener("click", async () => {
         const code = barcodeInput.value.trim();
         if (!code) return;
-        const res = await fetch(
-          `/api/product-by-barcode?code=${encodeURIComponent(code)}`
-        );
+        const res = await fetch(`/api/product-by-barcode?code=${encodeURIComponent(code)}`);
         if (res.ok) {
           const product = await res.json();
-          // After getting product, load its units
           await loadProductUnits(product.id);
-          // Use quantity 1 and selected unit (default base)
           let rawQty = 1;
           const selectedUnit = unitSelect.value;
           let baseQty = rawQty;
@@ -377,13 +333,10 @@ const products = rawDb
       });
     }
 
-    // Barcode scanner
     if (scanBarcodeBtn) {
       scanBarcodeBtn.addEventListener("click", () => {
         window.showBarcodeScanner(async (barcode) => {
-          const res = await fetch(
-            `/api/product-by-barcode?code=${encodeURIComponent(barcode)}`
-          );
+          const res = await fetch(`/api/product-by-barcode?code=${encodeURIComponent(barcode)}`);
           if (res.ok) {
             const product = await res.json();
             await loadProductUnits(product.id);
@@ -401,13 +354,11 @@ const products = rawDb
       });
     }
 
-    // Discount listeners
     if (discountType && discountValue) {
       discountType.addEventListener("change", updateTotals);
       discountValue.addEventListener("input", updateTotals);
     }
 
-    // Complete sale
     if (completeBtn) {
       completeBtn.addEventListener("click", async () => {
         if (basket.length === 0) {
@@ -416,9 +367,7 @@ const products = rawDb
         }
         const subtotal = basket.reduce((sum, item) => sum + item.total, 0);
         let discount = 0;
-        const discVal = discountValue
-          ? parseFloat(discountValue.value) || 0
-          : 0;
+        const discVal = discountValue ? parseFloat(discountValue.value) || 0 : 0;
         if (discountType && discountType.value === "percentage") {
           discount = subtotal * (discVal / 100);
         } else {
@@ -426,11 +375,7 @@ const products = rawDb
         }
         const finalTotal = subtotal - discount;
         const payload = {
-          items: basket.map((item) => ({
-            productId: item.productId,
-            quantity: item.qty,
-            unitPrice: item.unitPrice,
-          })),
+          items: basket.map(item => ({ productId: item.productId, quantity: item.qty, unitPrice: item.unitPrice })),
           discountType: discountType?.value || "fixed",
           discountValue: discVal,
           finalAmount: finalTotal,

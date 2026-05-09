@@ -1,16 +1,41 @@
 ---
 import Layout from '../../layouts/Layout.astro';
-const { userId } = Astro.locals;
-if (userId) return Astro.redirect('/admin/dashboard');
+const { user } = Astro.locals;
+if (user) return Astro.redirect('/admin/dashboard');
 ---
 
 <Layout>
-  <div class="max-w-sm mx-auto mt-20 p-6 bg-white rounded shadow">
-    <h1 class="text-2xl font-bold mb-4">Admin Login</h1>
-    <form method="post" action="/api/login" enctype="application/x-www-form-urlencoded">
-      <input type="email" name="email" placeholder="Email" class="w-full p-2 border rounded mb-2" required />
-      <input type="password" name="password" placeholder="Password" class="w-full p-2 border rounded mb-2" required />
-      <button type="submit" class="bg-blue-600 text-white p-2 w-full rounded">Login</button>
-    </form>
+  <div class="min-h-screen flex items-center justify-center bg-ash-50 dark:bg-ash-900 px-4">
+    <div class="max-w-md w-full bg-white dark:bg-ash-800 rounded-xl shadow-lg p-8">
+      <h1 class="text-2xl font-bold text-center text-ash-800 dark:text-white mb-6">Admin Login</h1>
+      <form method="post" action="/api/login" class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-ash-700 dark:text-ash-300 mb-1">Email</label>
+          <input
+            type="email"
+            name="email"
+            placeholder="admin@example.com"
+            class="w-full border border-ash-300 dark:border-ash-600 rounded-lg px-4 py-2 dark:bg-ash-800 dark:text-white focus:ring-2 focus:ring-primary-500"
+            required
+          />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-ash-700 dark:text-ash-300 mb-1">Password</label>
+          <input
+            type="password"
+            name="password"
+            placeholder="••••••••"
+            class="w-full border border-ash-300 dark:border-ash-600 rounded-lg px-4 py-2 dark:bg-ash-800 dark:text-white focus:ring-2 focus:ring-primary-500"
+            required
+          />
+        </div>
+        <button
+          type="submit"
+          class="w-full bg-primary-500 text-white py-2 rounded-lg hover:bg-primary-600 transition font-medium"
+        >
+          Login
+        </button>
+      </form>
+    </div>
   </div>
 </Layout>

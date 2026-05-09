@@ -40,6 +40,7 @@ const postHandler: APIRoute = async ({ request, redirect, locals }) => {
 
   const updated = await save('products', data);
   broadcastEvent({
+    id,
     type: 'product-updated',
     productId: updated.id,
     name: updated.name,
